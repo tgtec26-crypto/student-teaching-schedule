@@ -159,10 +159,18 @@
 			where('date', '<=', weekDates[4])
 		);
 
-		unsubscribeApps = onSnapshot(qApps, (snapshot) => {
-			applications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-			loading = false;
-		});
+		unsubscribeApps = onSnapshot(
+			qApps,
+			(snapshot) => {
+				applications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+				loading = false;
+			},
+			(error) => {
+				console.error('Applications fetch error:', error);
+				loading = false;
+				// 인덱스 부족 오류 발생 시 콘솔에 URL이 출력됩니다.
+			}
+		);
 
 		// Fetch Teacher Restrictions
 		const qRestricted = query(
@@ -170,9 +178,15 @@
 			where('teacher', '==', selectedTeacher)
 		);
 
-		unsubscribeRestricted = onSnapshot(qRestricted, (snapshot) => {
-			restrictions = snapshot.docs.map((doc) => doc.id);
-		});
+		unsubscribeRestricted = onSnapshot(
+			qRestricted,
+			(snapshot) => {
+				restrictions = snapshot.docs.map((doc) => doc.id);
+			},
+			(error) => {
+				console.error('Restrictions fetch error:', error);
+			}
+		);
 	}
 
 	onMount(() => {
