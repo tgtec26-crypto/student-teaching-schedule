@@ -35,6 +35,7 @@
 
 	let applications = $state<any[]>([]);
 	let restrictions = $state<string[]>([]);
+	let teacherRestrictions = $state<string[]>([]);
 	let loading = $state(true);
 
 	const grades = [1, 2, 3];
@@ -177,6 +178,11 @@
 		const qRestricted = query(collection(db, 'restricted_lessons'));
 		unsubscribeRestricted = onSnapshot(qRestricted, (snapshot) => {
 			restrictions = snapshot.docs.map((doc) => doc.id);
+		});
+
+		// Fetch Global Teacher Restrictions
+		onSnapshot(collection(db, 'teacher_restrictions'), (snapshot) => {
+			teacherRestrictions = snapshot.docs.map((doc) => doc.id);
 		});
 
 		return () => {
@@ -365,15 +371,24 @@
 									)}
 									{@const isMine = apps.some((a) => a.applicantEmail === $user?.email)}
 									{@const isFull = apps.length >= maxApplicants}
+									{@const isGlobalRestricted = slot
+										? teacherRestrictions.includes(slot.teacher)
+										: false}
 									{@const isTeacherRestricted = slot
-										? restrictions.includes(`${slot.teacher}_${date}_${period}_${classId}`)
+										? restrictions.includes(`${slot.teacher}_${date}_${period}_${classId}`) ||
+											isGlobalRestricted
 										: false}
 
-									<td class="slot-cell {slot ? 'active' : 'empty'} {isTeacherRestricted ? 'restricted' : ''}">
+									<td
+										class="slot-cell {slot ? 'active' : 'empty'} {isTeacherRestricted
+											? 'restricted'
+											: ''}"
+									>
 										{#if slot}
 											{#if isTeacherRestricted}
 												<div class="slot-restricted-msg">
-													<Lock size={12} /> 참관 불가
+													<Lock size={12} />
+													{isGlobalRestricted ? '전면 참관 불가' : '참관 불가'}
 												</div>
 											{:else}
 												<button
@@ -412,7 +427,9 @@
 														<div class="applicant-list">
 															{#each apps.filter((a) => a.status === 'APPROVED') as app}
 																<span class="applicant-tag"
-																	>{app.applicantSubject ? `[${app.applicantSubject}] ` : ''}{app.applicantName}</span
+																	>{app.applicantSubject
+																		? `[${app.applicantSubject}] `
+																		: ''}{app.applicantName}</span
 																>
 															{/each}
 														</div>
@@ -490,20 +507,27 @@
 								{@const isMine = apps.some((a) => a.applicantEmail === $user?.email)}
 								{@const isFull = apps.length >= maxApplicants}
 								{@const isRestricted = is7thPeriodRestricted(d, period)}
+								{@const isGlobalRestricted = selectedTeacher
+									? teacherRestrictions.includes(selectedTeacher)
+									: false}
 								{@const isTeacherRestricted =
 									slot && classId
-										? restrictions.includes(`${selectedTeacher}_${d}_${period}_${classId}`)
+										? restrictions.includes(`${selectedTeacher}_${d}_${period}_${classId}`) ||
+											isGlobalRestricted
 										: false}
 
 								<td
-									class="slot-cell {slot ? 'active' : isRestricted ? 'restricted' : 'empty'} {isTeacherRestricted
-										? 'restricted'
-										: ''}"
+									class="slot-cell {slot
+										? 'active'
+										: isRestricted
+											? 'restricted'
+											: 'empty'} {isTeacherRestricted ? 'restricted' : ''}"
 								>
 									{#if slot && classId}
 										{#if isTeacherRestricted}
 											<div class="slot-restricted-msg">
-												<Lock size={12} /> 참관 불가
+												<Lock size={12} />
+												{isGlobalRestricted ? '전면 참관 불가' : '참관 불가'}
 											</div>
 										{:else}
 											<button
@@ -530,7 +554,9 @@
 														{#if isMine}
 															{@const myApp = apps.find((a) => a.applicantEmail === $user?.email)}
 															<span
-																class="my-badge {myApp?.status === 'APPROVED' ? 'approved' : 'pending'}"
+																class="my-badge {myApp?.status === 'APPROVED'
+																	? 'approved'
+																	: 'pending'}"
 															>
 																{myApp?.status === 'APPROVED' ? '신청완료' : '승인대기'}
 															</span>
@@ -542,7 +568,9 @@
 													<div class="applicant-list">
 														{#each apps.filter((a) => a.status === 'APPROVED') as app}
 															<span class="applicant-tag"
-																>{app.applicantSubject ? `[${app.applicantSubject}] ` : ''}{app.applicantName}</span
+																>{app.applicantSubject
+																	? `[${app.applicantSubject}] `
+																	: ''}{app.applicantName}</span
 															>
 														{/each}
 													</div>

@@ -46,12 +46,12 @@
 				<div class="user-info">
 					<UserIcon size={18} />
 					<span class="user-name">{$user.displayName}</span>
-					<button class="btn-logout" on:click={logout} title="로그아웃">
+					<button class="btn-logout" onclick={logout} title="로그아웃">
 						<LogOut size={18} />
 					</button>
 				</div>
 			{:else}
-				<button class="btn-login" on:click={login}>
+				<button class="btn-login" onclick={login}>
 					<LogIn size={18} />
 					로그인
 				</button>

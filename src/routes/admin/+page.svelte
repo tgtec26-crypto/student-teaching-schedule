@@ -1,6 +1,16 @@
 <script lang="ts">
 	import { user, db, isAdmin, type UserRole } from '$lib/firebase';
-	import { collection, getDocs, doc, updateDoc, query, orderBy, setDoc } from 'firebase/firestore';
+	import {
+		collection,
+		getDocs,
+		doc,
+		updateDoc,
+		query,
+		orderBy,
+		setDoc,
+		onSnapshot,
+		deleteDoc
+	} from 'firebase/firestore';
 	import { onMount } from 'svelte';
 	import {
 		Shield,
@@ -11,10 +21,13 @@
 		UserCog,
 		Mail,
 		ShieldCheck,
-		UserPlus
+		UserPlus,
+		Lock,
+		Unlock
 	} from 'lucide-svelte';
 
 	let usersList = $state<any[]>([]);
+	let teacherRestrictions = $state<string[]>([]);
 	let loading = $state(true);
 	let saving = $state<string | null>(null);
 	let adding = $state(false);
@@ -29,17 +42,46 @@
 	async function fetchUsers() {
 		loading = true;
 		try {
+			// Fetch users
 			const q = query(collection(db, 'users'), orderBy('email', 'asc'));
 			const querySnapshot = await getDocs(q);
 			usersList = querySnapshot.docs.map((doc) => ({
 				id: doc.id,
 				...doc.data()
 			}));
+
+			// Subscribe to teacher restrictions
+			onSnapshot(collection(db, 'teacher_restrictions'), (snapshot) => {
+				teacherRestrictions = snapshot.docs.map((doc) => doc.id);
+			});
 		} catch (e) {
 			console.error('Users load error:', e);
 			message = { text: '사용자 목록을 불러오는 중 오류가 발생했습니다.', type: 'error' };
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function toggleTeacherRestriction(displayName: string) {
+		if (!displayName) return;
+		const isCurrentlyRestricted = teacherRestrictions.includes(displayName);
+
+		try {
+			if (isCurrentlyRestricted) {
+				await deleteDoc(doc(db, 'teacher_restrictions', displayName));
+				message = { text: `${displayName} 선생님의 참관 제한이 해제되었습니다.`, type: 'success' };
+			} else {
+				if (!confirm(`${displayName} 선생님의 모든 수업을 참관 불가로 전환하시겠습니까?`)) return;
+				await setDoc(doc(db, 'teacher_restrictions', displayName), {
+					restricted: true,
+					updatedAt: new Date(),
+					updatedBy: $user?.email
+				});
+				message = { text: `${displayName} 선생님의 참관이 전면 차단되었습니다.`, type: 'success' };
+			}
+		} catch (e: any) {
+			console.error('Restriction error:', e);
+			message = { text: '제한 설정 중 오류가 발생했습니다.', type: 'error' };
 		}
 	}
 
@@ -175,7 +217,7 @@
 						</div>
 						<button
 							class="btn btn-add"
-							on:click={addUsers}
+							onclick={addUsers}
 							disabled={adding || !bulkEmailsInput.trim()}
 						>
 							<Save size={18} />
@@ -213,6 +255,7 @@
 									<th>이메일</th>
 									<th>현재 권한</th>
 									<th>권한 변경</th>
+									<th>참관 차단</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -242,8 +285,7 @@
 										<td>
 											<select
 												value={u.role}
-												on:change={(e) =>
-													updateUserRole(u.email, e.currentTarget.value as UserRole)}
+												onchange={(e) => updateUserRole(u.email, e.currentTarget.value as UserRole)}
 												disabled={saving === u.email || u.email === 'tgtec26@snu-g.ms.kr'}
 											>
 												{#each roles as role}
@@ -252,6 +294,24 @@
 											</select>
 											{#if saving === u.email}
 												<span class="saving-text">저장 중...</span>
+											{/if}
+										</td>
+										<td>
+											{#if u.role === 'SUPERVISOR' && u.displayName}
+												<button
+													class="btn-toggle-block {teacherRestrictions.includes(u.displayName)
+														? 'restricted'
+														: ''}"
+													onclick={() => toggleTeacherRestriction(u.displayName)}
+												>
+													{#if teacherRestrictions.includes(u.displayName)}
+														<Lock size={14} /> 차단됨
+													{:else}
+														<Unlock size={14} /> 허용됨
+													{/if}
+												</button>
+											{:else}
+												<span class="not-applicable">-</span>
 											{/if}
 										</td>
 									</tr>
@@ -530,6 +590,40 @@
 		font-size: 0.8rem;
 		color: #666;
 		margin-left: 0.5rem;
+	}
+
+	.btn-toggle-block {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.4rem 0.8rem;
+		border-radius: 6px;
+		font-size: 0.85rem;
+		font-weight: 700;
+		cursor: pointer;
+		border: 1px solid #e2e8f0;
+		background: #f8fafc;
+		color: #64748b;
+		transition: all 0.2s;
+	}
+
+	.btn-toggle-block:hover {
+		background: #f1f5f9;
+	}
+
+	.btn-toggle-block.restricted {
+		background: #fff5f5;
+		color: #e53e3e;
+		border-color: #feb2b2;
+	}
+
+	.btn-toggle-block.restricted:hover {
+		background: #fed7d7;
+	}
+
+	.not-applicable {
+		color: #cbd5e0;
+		font-size: 0.9rem;
 	}
 
 	.loading {

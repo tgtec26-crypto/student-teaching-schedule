@@ -28,6 +28,7 @@
 	let selectedTeacher = $state('');
 	let applications = $state<any[]>([]);
 	let restrictions = $state<string[]>([]);
+	let teacherRestrictions = $state<string[]>([]);
 	let loading = $state(false);
 
 	const maxApplicants = 5;
@@ -187,6 +188,11 @@
 				console.error('Restrictions fetch error:', error);
 			}
 		);
+
+		// Fetch Global Teacher Restrictions
+		onSnapshot(collection(db, 'teacher_restrictions'), (snapshot) => {
+			teacherRestrictions = snapshot.docs.map((doc) => doc.id);
+		});
 	}
 
 	onMount(() => {
@@ -318,6 +324,11 @@
 								<User size={20} />
 								<h3>{selectedTeacher} 선생님 주간 참관 현황</h3>
 								<span class="count">총 {applications.length}건</span>
+								{#if teacherRestrictions.includes(selectedTeacher)}
+									<span class="global-restricted-badge">
+										<Lock size={14} /> 관리자에 의해 참관 전면 차단됨
+									</span>
+								{/if}
 							</div>
 							<button class="btn-close" onclick={() => (selectedTeacher = '')}> 닫기 </button>
 						</div>
@@ -619,6 +630,19 @@
 		border-radius: 20px;
 		font-size: 0.85rem;
 		font-weight: 700;
+	}
+
+	.global-restricted-badge {
+		background: #fee2e2;
+		color: #ef4444;
+		padding: 0.25rem 0.8rem;
+		border-radius: 20px;
+		font-size: 0.85rem;
+		font-weight: 800;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		border: 1px solid #fecaca;
 	}
 
 	/* Timetable Styling (Compact) */
