@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { db, isSupervisor, isAdmin } from '$lib/firebase';
+	import { user, db, isSupervisor, isAdmin } from '$lib/firebase';
 	import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 	import { timetableData } from '$lib/timetableData';
 	import {
