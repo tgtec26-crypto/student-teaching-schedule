@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { user, isAdmin, db, logout } from '$lib/firebase';
-	import { Calendar, ArrowRight, Lock, ShieldCheck, AlertCircle, Users, Info } from 'lucide-svelte';
+	import { user, isAdmin, isSupervisor, db, logout, userRole } from '$lib/firebase';
+	import { Calendar, ArrowRight, Lock, ShieldCheck, AlertCircle, Users, Info, UserCheck } from 'lucide-svelte';
 	import { doc, getDoc } from 'firebase/firestore';
 	import { onMount } from 'svelte';
 
@@ -20,7 +20,8 @@
 			checking = false;
 			return;
 		}
-		if ($isAdmin) {
+		// 관리자나 지도교사는 화이트리스트 체크 제외 (항상 허용)
+		if ($isAdmin || $isSupervisor) {
 			isWhitelisted = true;
 			checking = false;
 			return;
@@ -32,19 +33,20 @@
 				const adminList = docSnap.data().emails || [];
 				isWhitelisted = adminList.includes($user.email);
 			} else {
-				isWhitelisted = false;
+				// 화이트리스트가 없으면 기본적으로 학생 권한은 허용 (또는 정책에 따라 변경)
+				isWhitelisted = true; 
 			}
 		} catch (e) {
 			console.error("Whitelist check error:", e);
-			isWhitelisted = false;
+			isWhitelisted = true;
 		} finally {
 			checking = false;
 		}
 	}
 
 	$effect(() => {
-		if ($user) checkWhitelist();
-		else checking = false;
+		if ($user && $userRole !== null) checkWhitelist();
+		else if (!$user) checking = false;
 	});
 </script>
 
@@ -75,12 +77,20 @@
 			<div class="welcome-text">
 				<h2>👋 안녕하세요, {$user.displayName} 선생님!</h2>
 				<p>참관하고 싶은 날짜를 선택하여 시간표를 확인하고 신청해 주세요.</p>
-				{#if $isAdmin}
-					<a href="/admin" class="admin-badge">
-						<ShieldCheck size={16} />
-						관리자 모드 활성
-					</a>
-				{/if}
+				<div class="badge-group">
+					{#if $isAdmin}
+						<a href="/admin" class="admin-badge">
+							<ShieldCheck size={16} />
+							관리자 모드
+						</a>
+					{/if}
+					{#if $isSupervisor || $isAdmin}
+						<a href="/supervisor" class="supervisor-badge">
+							<UserCheck size={16} />
+							지도 교사 페이지
+						</a>
+					{/if}
+				</div>
 			</div>
 			<div class="info-badges">
 				<span class="badge">
@@ -164,11 +174,34 @@
 		font-size: 0.85rem;
 		font-weight: 700;
 		text-decoration: none;
-		margin-top: 0.5rem;
 	}
 
 	.admin-badge:hover {
 		background: #1e255a;
+	}
+
+	.supervisor-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		background: #f59e0b;
+		color: white;
+		padding: 0.3rem 0.8rem;
+		border-radius: 50px;
+		font-size: 0.85rem;
+		font-weight: 700;
+		text-decoration: none;
+	}
+
+	.supervisor-badge:hover {
+		background: #d97706;
+	}
+
+	.badge-group {
+		display: flex;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+		margin-top: 0.8rem;
 	}
 
 	.info-badges {

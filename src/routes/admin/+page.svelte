@@ -1,53 +1,114 @@
 <script lang="ts">
-	import { user, db, isAdmin } from '$lib/firebase';
-	import { doc, getDoc, setDoc } from 'firebase/firestore';
+	import { user, db, isAdmin, type UserRole } from '$lib/firebase';
+	import { collection, getDocs, doc, updateDoc, query, orderBy, setDoc } from 'firebase/firestore';
 	import { onMount } from 'svelte';
-	import { Shield, Save, Users, AlertCircle, CheckCircle2 } from 'lucide-svelte';
+	import { Shield, Save, Users, AlertCircle, CheckCircle2, UserCog, Mail, ShieldCheck, UserPlus } from 'lucide-svelte';
 
-	let whitelistInput = $state('');
+	let usersList = $state<any[]>([]);
 	let loading = $state(true);
-	let saving = $state(false);
+	let saving = $state<string | null>(null);
+	let adding = $state(false);
 	let message = $state({ text: '', type: '' });
 
-	onMount(async () => {
+	// New user bulk input state
+	let bulkEmailsInput = $state('');
+	let newUserRole = $state<UserRole>('STUDENT');
+
+	const roles: UserRole[] = ['STUDENT', 'SUPERVISOR', 'ADMIN'];
+
+	async function fetchUsers() {
+		loading = true;
 		try {
-			const docSnap = await getDoc(doc(db, "settings", "admin_whitelist"));
-			if (docSnap.exists()) {
-				const emails = docSnap.data().emails || [];
-				whitelistInput = emails.join('\n');
-			}
+			const q = query(collection(db, "users"), orderBy("email", "asc"));
+			const querySnapshot = await getDocs(q);
+			usersList = querySnapshot.docs.map(doc => ({
+				id: doc.id,
+				...doc.data()
+			}));
 		} catch (e) {
-			console.error("Whitelist load error:", e);
+			console.error("Users load error:", e);
+			message = { text: '사용자 목록을 불러오는 중 오류가 발생했습니다.', type: 'error' };
 		} finally {
 			loading = false;
 		}
+	}
+
+	onMount(() => {
+		fetchUsers();
 	});
 
-	async function saveWhitelist() {
-		if (!confirm('화이트리스트를 업데이트하시겠습니까?')) return;
-		
-		saving = true;
-		message = { text: '', type: '' };
+	async function addUsers() {
+		if (!bulkEmailsInput.trim()) {
+			alert('이메일을 입력해주세요.');
+			return;
+		}
 
-		// Clean up emails: split by newline/comma, trim, and filter empty strings
-		const emails = whitelistInput
+		// Split by newline or comma, trim, and filter valid emails
+		const emails = bulkEmailsInput
 			.split(/[\n,]/)
-			.map(e => e.trim())
+			.map(e => e.trim().toLowerCase())
 			.filter(e => e.length > 0 && e.includes('@'));
 
+		if (emails.length === 0) {
+			alert('유효한 이메일 형식이 없습니다.');
+			return;
+		}
+
+		if (!confirm(`총 ${emails.length}명의 사용자를 ${newUserRole} 권한으로 등록하시겠습니까?`)) {
+			return;
+		}
+
+		adding = true;
+		message = { text: '', type: '' };
+		let successCount = 0;
+
 		try {
-			await setDoc(doc(db, "settings", "admin_whitelist"), {
-				emails: emails,
+			for (const email of emails) {
+				const userRef = doc(db, "users", email);
+				await setDoc(userRef, {
+					email: email,
+					role: newUserRole,
+					updatedAt: new Date(),
+					updatedBy: $user?.email
+				}, { merge: true });
+				successCount++;
+			}
+
+			message = { text: `${successCount}명의 사용자가 성공적으로 등록되었습니다.`, type: 'success' };
+			bulkEmailsInput = '';
+			fetchUsers();
+		} catch (e: any) {
+			console.error("Bulk add error:", e);
+			message = { text: '사용자 등록 중 일부 오류가 발생했습니다: ' + e.message, type: 'error' };
+		} finally {
+			adding = false;
+		}
+	}
+
+	async function updateUserRole(email: string, newRole: UserRole) {
+		if (!confirm(`${email} 사용자의 권한을 ${newRole}(으)로 변경하시겠습니까?`)) {
+			fetchUsers();
+			return;
+		}
+		
+		saving = email;
+		message = { text: '', type: '' };
+
+		try {
+			const userRef = doc(db, "users", email);
+			await updateDoc(userRef, {
+				role: newRole,
 				updatedAt: new Date(),
 				updatedBy: $user?.email
 			});
-			message = { text: `성공적으로 저장되었습니다. (총 ${emails.length}명)`, type: 'success' };
-			whitelistInput = emails.join('\n'); // 정제된 목록으로 다시 표시
+			message = { text: `${email}의 권한이 ${newRole}(으)로 변경되었습니다.`, type: 'success' };
+			usersList = usersList.map(u => u.email === email ? { ...u, role: newRole } : u);
 		} catch (e: any) {
-			console.error("Save error:", e);
-			message = { text: '저장 중 오류가 발생했습니다: ' + e.message, type: 'error' };
+			console.error("Update error:", e);
+			message = { text: '권한 변경 중 오류가 발생했습니다: ' + e.message, type: 'error' };
+			fetchUsers();
 		} finally {
-			saving = false;
+			saving = null;
 		}
 	}
 </script>
@@ -66,56 +127,125 @@
 				<Shield size={32} />
 				<h1>시스템 관리자 설정</h1>
 			</div>
-			<p>로그인을 허용할 사용자 이메일 목록을 관리합니다.</p>
+			<p>사용자들을 화이트리스트에 일괄 등록하고 권한을 관리합니다.</p>
 		</header>
 
-		<div class="admin-content grid">
-			<section class="whitelist-section card">
+		<div class="admin-content">
+			<!-- Add User Section (Bulk) -->
+			<section class="add-user-section card">
 				<div class="section-header">
-					<Users size={20} />
-					<h3>이메일 화이트리스트 일괄 등록</h3>
+					<UserPlus size={20} />
+					<h3>사용자 일괄 추가(화이트리스트)</h3>
 				</div>
-				
-				<div class="input-group">
-					<label for="whitelist">이메일 목록 (줄바꿈 또는 쉼표로 구분)</label>
-					<textarea 
-						id="whitelist"
-						bind:value={whitelistInput}
-						placeholder="user1@snu-g.ms.kr&#10;user2@snu-g.ms.kr"
-						disabled={loading || saving}
-					></textarea>
+				<div class="add-user-form bulk">
+					<div class="input-group full-width">
+						<label for="bulk-emails">이메일 목록 (줄바꿈 또는 쉼표로 구분)</label>
+						<textarea 
+							id="bulk-emails"
+							bind:value={bulkEmailsInput} 
+							placeholder="user1@snu-g.ms.kr&#10;user2@snu-g.ms.kr, user3@snu-g.ms.kr"
+							disabled={adding}
+						></textarea>
+					</div>
+					<div class="action-row">
+						<div class="input-group">
+							<label for="new-role">부여할 공통 권한</label>
+							<select id="new-role" bind:value={newUserRole} disabled={adding}>
+								{#each roles as role}
+									<option value={role}>{role}</option>
+								{/each}
+							</select>
+						</div>
+						<button class="btn btn-add" on:click={addUsers} disabled={adding || !bulkEmailsInput.trim()}>
+							<Save size={18} />
+							{adding ? '처리 중...' : '사용자 일괄 등록'}
+						</button>
+					</div>
 				</div>
+			</section>
 
-				<div class="action-bar">
+			<!-- User List Section -->
+			<section class="user-management-section card">
+				<div class="section-header">
+					<UserCog size={20} />
+					<h3>전체 사용자 권한 관리</h3>
 					{#if message.text}
 						<div class="message {message.type}">
 							{#if message.type === 'success'}
-								<CheckCircle2 size={18} />
+								<CheckCircle2 size={16} />
 							{:else}
-								<AlertCircle size={18} />
+								<AlertCircle size={16} />
 							{/if}
 							{message.text}
 						</div>
 					{/if}
-					
-					<button 
-						class="btn btn-save" 
-						on:click={saveWhitelist}
-						disabled={loading || saving}
-					>
-						<Save size={20} />
-						{saving ? '저장 중...' : '설정 저장하기'}
-					</button>
 				</div>
+				
+				{#if loading}
+					<div class="loading">사용자 목록을 불러오는 중...</div>
+				{:else}
+					<div class="table-container">
+						<table>
+							<thead>
+								<tr>
+									<th>사용자 정보</th>
+									<th>이메일</th>
+									<th>현재 권한</th>
+									<th>권한 변경</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each usersList as u}
+									<tr class:is-admin={u.role === 'ADMIN'}>
+										<td>
+											<div class="user-info">
+												<img src={u.photoURL || '/school-logo.svg'} alt={u.displayName} class="avatar" />
+												<span class="name">{u.displayName || '미가입 사용자'}</span>
+											</div>
+										</td>
+										<td>
+											<div class="email-cell">
+												<Mail size={14} />
+												{u.email}
+											</div>
+										</td>
+										<td>
+											<span class="role-badge {u.role.toLowerCase()}">
+												{u.role}
+											</span>
+										</td>
+										<td>
+											<select 
+												value={u.role} 
+												on:change={(e) => updateUserRole(u.email, e.currentTarget.value as UserRole)}
+												disabled={saving === u.email || u.email === 'tgtec26@snu-g.ms.kr'}
+											>
+												{#each roles as role}
+													<option value={role}>{role}</option>
+												{/each}
+											</select>
+											{#if saving === u.email}
+												<span class="saving-text">저장 중...</span>
+											{/if}
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{/if}
 			</section>
 
 			<aside class="guide-section card">
-				<h3>💡 사용 가이드</h3>
+				<div class="section-header">
+					<ShieldCheck size={20} />
+					<h3>💡 관리자 가이드</h3>
+				</div>
 				<ul>
-					<li>이메일은 **엔터(줄바꿈)** 또는 **쉼표(,)**로 구분하여 여러 명을 한꺼번에 입력할 수 있습니다.</li>
-					<li>입력 시 자동으로 공백을 제거하고 유효한 이메일 형식만 추출합니다.</li>
-					<li>관리자(`tgtec26@snu-g.ms.kr`)는 화이트리스트 등록 여부와 상관없이 항상 접속 가능합니다.</li>
-					<li>화이트리스트에 없는 사용자가 로그인을 시도하면 시스템 이용이 차단됩니다.</li>
+					<li><strong>일괄 추가:</strong> 여러 개의 이메일을 엔터(줄바꿈)나 쉼표로 구분하여 한꺼번에 등록할 수 있습니다.</li>
+					<li><strong>권한 자동 부여:</strong> 등록 시 선택한 권한이 입력한 모든 사용자에게 동일하게 적용됩니다.</li>
+					<li><strong>로그인 허용:</strong> 화이트리스트에 등록된 이메일로 로그인하는 사용자만 시스템을 이용할 수 있습니다.</li>
+					<li><strong>이름 자동 연동:</strong> 사용자가 최초 로그인 시 구글 계정의 이름이 자동으로 목록에 나타납니다.</li>
 				</ul>
 			</aside>
 		</div>
@@ -141,11 +271,93 @@
 		font-weight: 900;
 	}
 
-	.admin-content.grid {
-		display: grid;
-		grid-template-columns: 2fr 1fr;
+	.admin-content {
+		display: flex;
+		flex-direction: column;
 		gap: 2rem;
-		align-items: start;
+	}
+
+	.add-user-section {
+		background: #f8fafc;
+		border: 2px dashed #e2e8f0;
+	}
+
+	.add-user-form.bulk {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.input-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.input-group.full-width {
+		width: 100%;
+	}
+
+	.add-user-form label {
+		font-weight: 700;
+		font-size: 0.9rem;
+		color: #666;
+	}
+
+	textarea {
+		width: 100%;
+		height: 120px;
+		padding: 1rem;
+		border: 2px solid #ddd;
+		border-radius: 8px;
+		font-family: inherit;
+		font-size: 0.95rem;
+		line-height: 1.5;
+		resize: vertical;
+		transition: border-color 0.2s;
+	}
+
+	textarea:focus {
+		outline: none;
+		border-color: var(--header-bg);
+	}
+
+	.action-row {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 1.5rem;
+		flex-wrap: wrap;
+	}
+
+	.action-row .input-group {
+		flex: 1;
+		min-width: 250px;
+	}
+
+	.btn-add {
+		background-color: var(--header-bg);
+		color: white;
+		border: none;
+		padding: 0.7rem 2rem;
+		border-radius: 8px;
+		font-weight: 800;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		cursor: pointer;
+		height: 45px;
+		transition: all 0.2s;
+	}
+
+	.btn-add:hover:not(:disabled) {
+		background-color: #1e255a;
+		transform: translateY(-1px);
+	}
+
+	.btn-add:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 
 	.section-header {
@@ -160,92 +372,117 @@
 
 	.section-header h3 { margin: 0; }
 
-	.input-group {
+	.message {
+		margin-left: auto;
 		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.input-group label {
+		align-items: center;
+		gap: 0.4rem;
+		font-size: 0.85rem;
 		font-weight: 700;
-		color: #555;
+		padding: 0.4rem 0.8rem;
+		border-radius: 6px;
 	}
 
-	textarea {
+	.message.success { background: #e6fffa; color: #2c7a7b; }
+	.message.error { background: #fff5f5; color: #c53030; }
+
+	.table-container {
+		overflow-x: auto;
+	}
+
+	table {
 		width: 100%;
-		height: 400px;
-		padding: 1rem;
-		border: 2px solid #ddd;
-		border-radius: 8px;
-		font-family: 'Consolas', 'Monaco', monospace;
+		border-collapse: collapse;
 		font-size: 0.95rem;
-		line-height: 1.5;
-		resize: vertical;
-		transition: border-color 0.2s;
 	}
 
-	textarea:focus {
+	th {
+		text-align: left;
+		padding: 1rem;
+		background: #f8f9fa;
+		color: #555;
+		font-weight: 700;
+		border-bottom: 2px solid #eee;
+	}
+
+	td {
+		padding: 1rem;
+		border-bottom: 1px solid #eee;
+		vertical-align: middle;
+	}
+
+	tr:hover {
+		background-color: #fcfcfc;
+	}
+
+	tr.is-admin {
+		background-color: #f0f4ff;
+	}
+
+	.user-info {
+		display: flex;
+		align-items: center;
+		gap: 0.8rem;
+	}
+
+	.avatar {
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		object-fit: cover;
+		border: 1px solid #ddd;
+	}
+
+	.name {
+		font-weight: 700;
+		color: #333;
+	}
+
+	.email-cell {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		color: #666;
+		font-size: 0.9rem;
+	}
+
+	.role-badge {
+		padding: 0.2rem 0.6rem;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		font-weight: 800;
+		text-transform: uppercase;
+	}
+
+	.role-badge.student { background: #edf2f7; color: #4a5568; }
+	.role-badge.supervisor { background: #feebc8; color: #c05621; }
+	.role-badge.admin { background: #c6f6d5; color: #22543d; }
+
+	select {
+		padding: 0.4rem 0.6rem;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		font-size: 0.9rem;
+		background: white;
+		cursor: pointer;
+	}
+
+	select:focus {
 		outline: none;
 		border-color: var(--header-bg);
 	}
 
-	.action-bar {
-		margin-top: 1.5rem;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
+	.saving-text {
+		font-size: 0.8rem;
+		color: #666;
+		margin-left: 0.5rem;
 	}
 
-	.btn-save {
-		background-color: var(--header-bg);
-		color: white;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 1rem 2rem;
-		font-size: 1.1rem;
-		border: none;
-		border-radius: 8px;
-		font-weight: 800;
-		cursor: pointer;
-		margin-left: auto;
-	}
-
-	.btn-save:hover:not(:disabled) {
-		background-color: #1e255a;
-		transform: translateY(-2px);
-	}
-
-	.btn-save:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.message {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		font-weight: 700;
-		padding: 0.8rem 1.2rem;
-		border-radius: 8px;
-	}
-
-	.message.success {
-		background: #e6fffa;
-		color: #2c7a7b;
-	}
-
-	.message.error {
-		background: #fff5f5;
-		color: #c53030;
-	}
-
-	.guide-section h3 {
-		margin-top: 0;
-		color: var(--header-bg);
-		border-bottom: 1px solid #eee;
-		padding-bottom: 0.5rem;
+	.loading {
+		text-align: center;
+		padding: 3rem;
+		color: #666;
+		font-weight: 600;
 	}
 
 	.guide-section ul {
@@ -266,11 +503,5 @@
 		flex-direction: column;
 		align-items: center;
 		gap: 1rem;
-	}
-
-	@media (max-width: 900px) {
-		.admin-content.grid {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>

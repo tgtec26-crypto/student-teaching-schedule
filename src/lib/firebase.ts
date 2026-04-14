@@ -1,7 +1,8 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, getDoc, doc } from 'firebase/firestore';
+import { getFirestore, getDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { writable } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
+import { browser } from '$app/environment';
 
 const firebaseConfig = {
 	apiKey: "AIzaSyAWk9OxdEFTtQ3pvErnkSEki65BMHFD46k",
@@ -18,35 +19,74 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
+export type UserRole = 'ADMIN' | 'SUPERVISOR' | 'STUDENT' | null;
+
 // User State Store
 export const user = writable<any>(null);
-export const isAdmin = writable<boolean>(false);
+export const userRole = writable<UserRole>(null);
 
-// Admin Privilege Check
-async function checkAdminPrivilege(email: string | null) {
-	if (!email) return false;
-	if (email === 'tgtec26@snu-g.ms.kr') return true;
+// Derived Stores for UI convenience
+export const isAdmin = derived(userRole, ($role) => $role === 'ADMIN');
+export const isSupervisor = derived(userRole, ($role) => $role === 'SUPERVISOR');
+export const isStudent = derived(userRole, ($role) => $role === 'STUDENT');
 
-	try {
-		const docSnap = await getDoc(doc(db, "settings", "admin_whitelist"));
-		if (docSnap.exists()) {
-			const adminList = docSnap.data().emails || [];
-			return adminList.includes(email);
-		}
-	} catch (e) {
-		console.error("Admin check error:", e);
+// Cookie Sync for Server-Side Protection
+function setRoleCookie(role: UserRole) {
+	if (!browser) return;
+	if (role) {
+		// Set cookie for 1 hour (matches Firebase session roughly)
+		document.cookie = `userRole=${role}; path=/; max-age=3600; SameSite=Lax`;
+	} else {
+		// Clear cookie
+		document.cookie = `userRole=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
 	}
-	return false;
+}
+
+// User Sync & Role Management
+async function syncUser(u: any): Promise<UserRole> {
+	if (!u || !u.email) return null;
+
+	const userRef = doc(db, "users", u.email);
+	const docSnap = await getDoc(userRef);
+
+	if (!docSnap.exists()) {
+		// New user: set default role
+		// Special case for the primary admin
+		const role: UserRole = u.email === 'tgtec26@snu-g.ms.kr' ? 'ADMIN' : 'STUDENT';
+		await setDoc(userRef, {
+			email: u.email,
+			displayName: u.displayName,
+			photoURL: u.photoURL,
+			role: role,
+			createdAt: serverTimestamp(),
+			lastLogin: serverTimestamp()
+		});
+		return role;
+	} else {
+		// Existing user: update last login and profile info
+		await setDoc(userRef, {
+			displayName: u.displayName,
+			photoURL: u.photoURL,
+			lastLogin: serverTimestamp()
+		}, { merge: true });
+		
+		const role = docSnap.data().role;
+		// Migration from old 'USER' role if necessary
+		if (role === 'USER') return 'STUDENT';
+		return role as UserRole;
+	}
 }
 
 // Observe Auth State
 onAuthStateChanged(auth, async (u) => {
 	user.set(u);
 	if (u) {
-		const isUserAdmin = await checkAdminPrivilege(u.email);
-		isAdmin.set(isUserAdmin);
+		const role = await syncUser(u);
+		userRole.set(role);
+		setRoleCookie(role);
 	} else {
-		isAdmin.set(false);
+		userRole.set(null);
+		setRoleCookie(null);
 	}
 });
 
@@ -65,6 +105,7 @@ export async function login() {
 export async function logout() {
 	try {
 		await signOut(auth);
+		setRoleCookie(null);
 	} catch (error) {
 		console.error("Logout Error:", error);
 	}
