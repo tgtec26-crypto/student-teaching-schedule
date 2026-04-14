@@ -22,7 +22,8 @@
 		Calendar,
 		ChevronLeft,
 		ChevronRight,
-		BookOpen
+		BookOpen,
+		Lock
 	} from 'lucide-svelte';
 
 	const date = page.params.date ?? '';
@@ -33,6 +34,7 @@
 	let selectedTeacher = $state<string | null>(null);
 
 	let applications = $state<any[]>([]);
+	let restrictions = $state<string[]>([]);
 	let loading = $state(true);
 
 	const grades = [1, 2, 3];
@@ -151,22 +153,36 @@
 		})
 	);
 
-	// Firestore Listener (Fetch all apps for the current week)
-	let unsubscribe: () => void;
-	onMount(() => {
-		const q = query(
+	// Firestore Listener (Fetch all apps and restrictions for the current week)
+	let unsubscribeApps: () => void;
+	let unsubscribeRestricted: () => void;
+
+	$effect(() => {
+		// Fetch Applications
+		const qApps = query(
 			collection(db, 'observation_applications'),
 			where('date', '>=', weekDates[0]),
 			where('date', '<=', weekDates[4])
 		);
-		unsubscribe = onSnapshot(q, (snapshot) => {
-			applications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+		unsubscribeApps = onSnapshot(qApps, (snapshot) => {
+			applications = snapshot.docs.map((doc) => ({
+				id: doc.id,
+				...doc.data()
+			}));
 			loading = false;
 		});
-	});
 
-	onDestroy(() => {
-		if (unsubscribe) unsubscribe();
+		// Fetch All Restrictions
+		const qRestricted = query(collection(db, 'restricted_lessons'));
+		unsubscribeRestricted = onSnapshot(qRestricted, (snapshot) => {
+			restrictions = snapshot.docs.map((doc) => doc.id);
+		});
+
+		return () => {
+			if (unsubscribeApps) unsubscribeApps();
+			if (unsubscribeRestricted) unsubscribeRestricted();
+		};
 	});
 
 	// Webhook Notification
@@ -192,11 +208,9 @@
 		};
 
 		try {
-			// Using no-cors might be needed for some webhooks if they don't support OPTIONS preflight,
-			// but Google Chat webhooks usually work with a simple POST if sent from a secure origin.
 			await fetch(webhookUrl, {
 				method: 'POST',
-				mode: 'no-cors', // Avoid CORS issues for simple webhook delivery
+				mode: 'no-cors',
 				headers: { 'Content-Type': 'application/json; charset=UTF-8' },
 				body: JSON.stringify(message)
 			});
@@ -214,25 +228,30 @@
 		teacher: string
 	) {
 		if (!$user) return alert('로그인이 필요합니다.');
-		if (!$isStudent) return alert('참관 신청은 실습생 전용 기능입니다.');
 
-		const slotApps = applications.filter(
-			(app) => app.date === targetDate && app.classId === classId && app.period === period
+		const existingApp = applications.find(
+			(app) =>
+				app.applicantEmail === $user.email &&
+				app.date === targetDate &&
+				app.classId === classId &&
+				app.period === period
 		);
-		const myApp = slotApps.find((app) => app.applicantEmail === $user.email);
 
-		if (myApp) {
+		if (existingApp) {
 			if (confirm('신청을 취소하시겠습니까?')) {
-				await deleteDoc(doc(db, 'observation_applications', myApp.id));
+				await deleteDoc(doc(db, 'observation_applications', existingApp.id));
 			}
 		} else {
-			// Duplicate check for the same period on the same day
+			const slotApps = applications.filter(
+				(app) => app.date === targetDate && app.classId === classId && app.period === period
+			);
+
 			const hasDuplicate = applications.some(
 				(app) =>
 					app.applicantEmail === $user.email && app.date === targetDate && app.period === period
 			);
-			if (hasDuplicate) return alert('해당 교시에 이미 다른 수업을 신청하셨습니다.');
 
+			if (hasDuplicate) return alert('해당 교시에 이미 다른 수업을 신청하셨습니다.');
 			if (slotApps.length >= maxApplicants) return alert('정원이 초과되었습니다.');
 
 			if (confirm(`${targetDate} ${period}교시 (${subject}) 수업 참관을 신청하시겠습니까?`)) {
@@ -260,20 +279,7 @@
 	}
 
 	function getClassesForGrade(grade: number) {
-		return Object.keys(timetableData)
-			.filter((id) => id.startsWith(grade.toString()))
-			.sort();
-	}
-
-	// Teacher Weekly Data Filter
-	function getTeacherSlot(teacher: string, targetDate: string, period: string) {
-		for (const [classId, dates] of Object.entries(timetableData)) {
-			const slot = (dates as any)[targetDate]?.[period];
-			if (slot && slot.teacher === teacher) {
-				return { classId, ...slot };
-			}
-		}
-		return null;
+		return Object.keys(timetableData).filter((id) => id.startsWith(grade.toString()));
 	}
 
 	function is7thPeriodRestricted(targetDate: string, period: string) {
@@ -284,6 +290,18 @@
 </script>
 
 <div class="full-width container">
+	<header class="page-header">
+		<div class="header-top">
+			<a href="/" class="back-link">
+				<ChevronLeft size={20} /> 뒤로가기
+			</a>
+			<div class="title-group">
+				<Calendar size={32} />
+				<h1>5월 {new Date(date).getDate()}일 ({weekDays[new Date(date).getDay() - 1]}) 시간표</h1>
+			</div>
+		</div>
+	</header>
+
 	<nav class="main-nav">
 		<div class="grade-tabs">
 			{#each grades as g}
@@ -307,8 +325,7 @@
 				selectedGrade = 0;
 			}}
 		>
-			<BookOpen size={18} />
-			교사별
+			<BookOpen size={18} /> 교사별
 		</button>
 	</nav>
 
@@ -333,7 +350,7 @@
 				</thead>
 				<tbody>
 					{#each periods as period}
-						{#if !is7thPeriodRestricted(date, period)}
+						{#if !(selectedGrade === 3 && period === '7')}
 							<tr>
 								<td
 									class="sticky-col period-cell {period === '7' ||
@@ -348,53 +365,60 @@
 									)}
 									{@const isMine = apps.some((a) => a.applicantEmail === $user?.email)}
 									{@const isFull = apps.length >= maxApplicants}
+									{@const isTeacherRestricted = slot
+										? restrictions.includes(`${slot.teacher}_${date}_${period}_${classId}`)
+										: false}
 
-									<td class="slot-cell {slot ? 'active' : 'empty'}">
+									<td class="slot-cell {slot ? 'active' : 'empty'} {isTeacherRestricted ? 'restricted' : ''}">
 										{#if slot}
-											<button
-												class="slot-btn {isMine ? 'mine' : ''} {isFull && !isMine ? 'full' : ''}"
-												onclick={() =>
-													toggleApplication(date, classId, period, slot.subject, slot.teacher)}
-											>
-												<div class="slot-row">
-													<div class="slot-info-main">
-														<span
-															class="subject"
-															style="background-color: {getSubjectColor(slot.subject)}"
-															>{slot.subject}</span
-														>
-														<span class="teacher">{slot.teacher}</span>
-													</div>
-													<div class="status-box">
-														<div class="applicant-count">
-															<Users size={12} />
-															{apps.length}/{maxApplicants}
-														</div>
-														{#if isMine}
-															{@const myApp = apps.find((a) => a.applicantEmail === $user?.email)}
-															<span
-																class="my-badge {myApp?.status === 'APPROVED'
-																	? 'approved'
-																	: 'pending'}"
-															>
-																{myApp?.status === 'APPROVED' ? '신청완료' : '승인대기'}
-															</span>
-														{/if}
-													</div>
+											{#if isTeacherRestricted}
+												<div class="slot-restricted-msg">
+													<Lock size={12} /> 참관 불가
 												</div>
-
-												{#if apps.some((a) => a.status === 'APPROVED')}
-													<div class="applicant-list">
-														{#each apps.filter((a) => a.status === 'APPROVED') as app}
-															<span class="applicant-tag"
-																>{app.applicantSubject
-																	? `[${app.applicantSubject}] `
-																	: ''}{app.applicantName}</span
+											{:else}
+												<button
+													class="slot-btn {isMine ? 'mine' : ''} {isFull && !isMine ? 'full' : ''}"
+													onclick={() =>
+														toggleApplication(date, classId, period, slot.subject, slot.teacher)}
+												>
+													<div class="slot-row">
+														<div class="slot-info-main">
+															<span
+																class="subject"
+																style="background-color: {getSubjectColor(slot.subject)}"
+																>{slot.subject}</span
 															>
-														{/each}
+															<span class="teacher">{slot.teacher}</span>
+														</div>
+														<div class="status-box">
+															<div class="applicant-count">
+																<Users size={12} />
+																{apps.length}/{maxApplicants}
+															</div>
+															{#if isMine}
+																{@const myApp = apps.find((a) => a.applicantEmail === $user?.email)}
+																<span
+																	class="my-badge {myApp?.status === 'APPROVED'
+																		? 'approved'
+																		: 'pending'}"
+																>
+																	{myApp?.status === 'APPROVED' ? '신청완료' : '승인대기'}
+																</span>
+															{/if}
+														</div>
 													</div>
-												{/if}
-											</button>
+
+													{#if apps.some((a) => a.status === 'APPROVED')}
+														<div class="applicant-list">
+															{#each apps.filter((a) => a.status === 'APPROVED') as app}
+																<span class="applicant-tag"
+																	>{app.applicantSubject ? `[${app.applicantSubject}] ` : ''}{app.applicantName}</span
+																>
+															{/each}
+														</div>
+													{/if}
+												</button>
+											{/if}
 										{:else}
 											<div class="no-class">-</div>
 										{/if}
@@ -437,9 +461,6 @@
 				<User size={24} />
 				<h2>{selectedTeacher} 선생님 주간 시간표</h2>
 			</div>
-			<div class="week-info">
-				{weekDates[0]} ~ {weekDates[4]}
-			</div>
 		</div>
 
 		<div class="timetable-wrapper">
@@ -457,67 +478,77 @@
 						<tr>
 							<td class="sticky-col period-cell {period === '7' ? 'last' : ''}">{period}</td>
 							{#each weekDates as d}
-								{@const slot = getTeacherSlot(selectedTeacher, d, period)}
-								{@const apps = slot
+								{@const classId = Object.keys(timetableData).find(
+									(id) => timetableData[id][d]?.[period]?.teacher === selectedTeacher
+								)}
+								{@const slot = classId ? timetableData[classId][d][period] : null}
+								{@const apps = classId
 									? applications.filter(
-											(app) =>
-												app.date === d && app.classId === slot.classId && app.period === period
+											(app) => app.date === d && app.classId === classId && app.period === period
 										)
 									: []}
 								{@const isMine = apps.some((a) => a.applicantEmail === $user?.email)}
 								{@const isFull = apps.length >= maxApplicants}
 								{@const isRestricted = is7thPeriodRestricted(d, period)}
+								{@const isTeacherRestricted =
+									slot && classId
+										? restrictions.includes(`${selectedTeacher}_${d}_${period}_${classId}`)
+										: false}
 
-								<td class="slot-cell {slot ? 'active' : isRestricted ? 'restricted' : 'empty'}">
-									{#if slot}
-										<button
-											class="slot-btn {isMine ? 'mine' : ''} {isFull && !isMine ? 'full' : ''}"
-											onclick={() =>
-												toggleApplication(d, slot.classId, period, slot.subject, selectedTeacher!)}
-										>
-											<div class="slot-row">
-												<div class="slot-info-main">
-													<span
-														class="subject"
-														style="background-color: {getSubjectColor(slot.subject)}"
-														>{slot.subject}</span
-													>
-													<span class="class-label"
-														>{slot.classId.substring(0, 1)}-{parseInt(
-															slot.classId.substring(2)
-														)}</span
-													>
-												</div>
-												<div class="status-box">
-													<div class="applicant-count">
-														<Users size={12} />
-														{apps.length}/{maxApplicants}
-													</div>
-													{#if isMine}
-														{@const myApp = apps.find((a) => a.applicantEmail === $user?.email)}
-														<span
-															class="my-badge {myApp?.status === 'APPROVED'
-																? 'approved'
-																: 'pending'}"
-														>
-															{myApp?.status === 'APPROVED' ? '신청완료' : '승인대기'}
-														</span>
-													{/if}
-												</div>
+								<td
+									class="slot-cell {slot ? 'active' : isRestricted ? 'restricted' : 'empty'} {isTeacherRestricted
+										? 'restricted'
+										: ''}"
+								>
+									{#if slot && classId}
+										{#if isTeacherRestricted}
+											<div class="slot-restricted-msg">
+												<Lock size={12} /> 참관 불가
 											</div>
-
-											{#if apps.some((a) => a.status === 'APPROVED')}
-												<div class="applicant-list">
-													{#each apps.filter((a) => a.status === 'APPROVED') as app}
-														<span class="applicant-tag"
-															>{app.applicantSubject
-																? `[${app.applicantSubject}] `
-																: ''}{app.applicantName}</span
+										{:else}
+											<button
+												class="slot-btn {isMine ? 'mine' : ''} {isFull && !isMine ? 'full' : ''}"
+												onclick={() =>
+													toggleApplication(d, classId, period, slot.subject, selectedTeacher!)}
+											>
+												<div class="slot-row">
+													<div class="slot-info-main">
+														<span
+															class="subject"
+															style="background-color: {getSubjectColor(slot.subject)}"
+															>{slot.subject}</span
 														>
-													{/each}
+														<span class="class-label"
+															>{classId.substring(0, 1)}-{parseInt(classId.substring(2))}</span
+														>
+													</div>
+													<div class="status-box">
+														<div class="applicant-count">
+															<Users size={12} />
+															{apps.length}/{maxApplicants}
+														</div>
+														{#if isMine}
+															{@const myApp = apps.find((a) => a.applicantEmail === $user?.email)}
+															<span
+																class="my-badge {myApp?.status === 'APPROVED' ? 'approved' : 'pending'}"
+															>
+																{myApp?.status === 'APPROVED' ? '신청완료' : '승인대기'}
+															</span>
+														{/if}
+													</div>
 												</div>
-											{/if}
-										</button>
+
+												{#if apps.some((a) => a.status === 'APPROVED')}
+													<div class="applicant-list">
+														{#each apps.filter((a) => a.status === 'APPROVED') as app}
+															<span class="applicant-tag"
+																>{app.applicantSubject ? `[${app.applicantSubject}] ` : ''}{app.applicantName}</span
+															>
+														{/each}
+													</div>
+												{/if}
+											</button>
+										{/if}
 									{:else if isRestricted}
 										<div class="no-class restricted">수업 없음</div>
 									{:else}
@@ -535,23 +566,57 @@
 
 <style>
 	.full-width {
-		max-width: 1300px !important;
+		max-width: 1400px !important;
 		margin: 0 auto;
 		padding: 0 2rem 2rem 2rem;
+	}
+
+	.page-header {
+		margin-bottom: 2rem;
+		padding-top: 1rem;
+	}
+
+	.header-top {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.back-link {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		color: #64748b;
+		text-decoration: none;
+		font-weight: 700;
+		width: fit-content;
+	}
+
+	.back-link:hover {
+		color: var(--header-bg);
+	}
+
+	.title-group {
+		display: flex;
+		align-items: center;
+		gap: 0.8rem;
+		color: var(--header-bg);
+	}
+
+	.title-group h1 {
+		margin: 0;
+		font-size: 2rem;
+		font-weight: 900;
 	}
 
 	.main-nav {
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		background: white;
-		border-bottom: 1px solid #e2e8f0;
-		margin: 0 -2rem 1.5rem -2rem;
-		padding: 0 2rem;
-		gap: 1rem;
-		position: sticky;
-		top: 0;
-		z-index: 10;
+		background: #f8fafc;
+		padding: 0.5rem;
+		border-radius: 12px;
+		margin-bottom: 2rem;
+		border: 1px solid #e2e8f0;
 	}
 
 	.grade-tabs {
@@ -560,133 +625,35 @@
 	}
 
 	.nav-item {
+		padding: 0.6rem 1.2rem;
+		border-radius: 8px;
 		border: none;
 		background: none;
-		padding: 1rem 1.5rem;
-		font-weight: 700;
-		cursor: pointer;
+		font-weight: 800;
 		color: #64748b;
-		font-size: 1rem;
-		transition: all 0.2s;
-		border-bottom: 4px solid transparent;
+		cursor: pointer;
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		transition: all 0.2s;
 	}
 
 	.nav-item:hover {
-		color: var(--header-bg);
-		background: #f8fafc;
+		background: #f1f5f9;
+		color: #1e293b;
 	}
+
 	.nav-item.active {
-		color: #1e40af;
-		border-bottom-color: #1e40af;
-		background: #eff6ff;
+		background: white;
+		color: var(--header-bg);
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 	}
 
 	.divider {
 		width: 1px;
 		height: 24px;
-		background: #e2e8f0;
-		margin: 0 0.5rem;
-	}
-
-	.teacher-tab {
-		color: #0f172a;
-	}
-
-	.view-header {
-		margin-bottom: 1.5rem;
-		text-align: center;
-	}
-
-	.view-header h2 {
-		margin: 0;
-		color: #1e293b;
-		font-size: 1.5rem;
-		font-weight: 800;
-	}
-	.date-info,
-	.week-info {
-		color: #64748b;
-		font-weight: 600;
-		margin-top: 0.3rem;
-		display: block;
-	}
-
-	.teacher-view-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		background: #f8fafc;
-		padding: 1rem 1.5rem;
-		border-radius: 12px;
-		border: 1px solid #e2e8f0;
-	}
-
-	.back-btn {
-		display: flex;
-		align-items: center;
-		gap: 0.3rem;
-		background: white;
-		border: 1px solid #cbd5e0;
-		padding: 0.5rem 1rem;
-		border-radius: 8px;
-		font-weight: 700;
-		cursor: pointer;
-		transition: all 0.2s;
-	}
-
-	.back-btn:hover {
-		background: #f1f5f9;
-	}
-
-	.teacher-title {
-		display: flex;
-		align-items: center;
-		gap: 0.8rem;
-		color: #1e40af;
-	}
-
-	.teacher-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-		gap: 0.8rem;
-		margin-top: 1rem;
-	}
-
-	.teacher-card {
-		padding: 1.5rem 0.8rem;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
-		background: white;
-		border: 1px solid #e2e8f0;
-		border-radius: 12px;
-		cursor: pointer;
-		transition: all 0.2s;
-	}
-
-	.teacher-card:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-		border-color: #3b82f6;
-	}
-
-	.teacher-subject-badge {
-		padding: 0.3rem 0.8rem;
-		border-radius: 20px;
-		font-size: 0.85rem;
-		font-weight: 800;
-		color: #1a202c;
-		box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
-	}
-
-	.teacher-name {
-		font-weight: 800;
-		font-size: 1.1rem;
-		color: #1e293b;
+		background: #cbd5e1;
+		margin: 0 1rem;
 	}
 
 	.timetable-wrapper {
@@ -759,7 +726,21 @@
 		border: 1px solid #edf2f7;
 	}
 	.slot-cell.restricted {
-		background: #f8fafc;
+		background: #f1f5f9;
+	}
+
+	.slot-restricted-msg {
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		color: #94a3b8;
+		font-size: 0.75rem;
+		font-weight: 800;
+		gap: 0.3rem;
+		padding: 0.5rem;
+		text-align: center;
 	}
 
 	.slot-btn {
@@ -776,6 +757,19 @@
 		gap: 0.3rem;
 	}
 
+	.slot-btn:hover {
+		background: #f8fafc;
+	}
+	.slot-btn.mine {
+		background: #f0fdf4;
+		border: 2px solid #22c55e;
+		border-radius: 8px;
+	}
+	.slot-btn.full {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
 	.slot-row {
 		display: flex;
 		align-items: center;
@@ -788,19 +782,6 @@
 		display: flex;
 		align-items: center;
 		gap: 0.4rem;
-	}
-
-	.slot-info {
-		background: #f8fafc;
-	}
-	.slot-btn.mine {
-		background: #f0fdf4;
-		border: 2px solid #22c55e;
-		border-radius: 8px;
-	}
-	.slot-btn.full {
-		opacity: 0.6;
-		cursor: not-allowed;
 	}
 
 	.slot-info {
@@ -829,10 +810,11 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-top: auto;
+		gap: 0.4rem;
 	}
+
 	.applicant-count {
-		font-size: 0.8rem;
+		font-size: 0.75rem;
 		color: #94a3b8;
 		font-weight: 700;
 		display: flex;
@@ -857,16 +839,16 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.2rem;
-		margin-top: 0.5rem;
-		padding-top: 0.5rem;
+		margin-top: 0.2rem;
+		padding-top: 0.2rem;
 		border-top: 1px dashed #e2e8f0;
 	}
 	.applicant-tag {
 		background: rgba(0, 0, 0, 0.05);
 		color: #475569;
-		font-size: 0.75rem;
+		font-size: 0.7rem;
 		font-weight: 700;
-		padding: 0.1rem 0.4rem;
+		padding: 0.05rem 0.3rem;
 		border-radius: 4px;
 		white-space: nowrap;
 	}
@@ -879,20 +861,101 @@
 		color: #e2e8f0;
 		font-weight: 800;
 	}
+
 	.no-class.restricted {
 		color: #cbd5e0;
 		font-size: 0.8rem;
 	}
 
-	.loading-state {
-		padding: 10rem 0;
-		text-align: center;
+	/* Teacher Selection Styles */
+	.teacher-selection {
+		padding: 1rem;
 	}
+
+	.teacher-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+		gap: 1rem;
+		margin-top: 2rem;
+	}
+
+	.teacher-card {
+		padding: 1.5rem 1rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+		transition: all 0.2s;
+		background: white;
+		cursor: pointer;
+		text-align: center;
+		border: 2px solid transparent;
+	}
+
+	.teacher-card:hover {
+		transform: translateY(-4px);
+		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+		border-color: #e2e8f0;
+	}
+
+	.teacher-subject-badge {
+		padding: 0.2rem 0.8rem;
+		border-radius: 20px;
+		font-size: 0.85rem;
+		font-weight: 800;
+		color: #1a202c;
+	}
+
+	.teacher-name {
+		font-weight: 800;
+		color: #2d3748;
+		font-size: 1.1rem;
+	}
+
+	/* Teacher View Header */
+	.teacher-view-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 1.5rem;
+	}
+
+	.back-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.6rem 1rem;
+		background: #f1f5f9;
+		border: none;
+		border-radius: 8px;
+		font-weight: 800;
+		color: #475569;
+		cursor: pointer;
+	}
+
+	.back-btn:hover {
+		background: #e2e8f0;
+	}
+
+	.teacher-title {
+		display: flex;
+		align-items: center;
+		gap: 0.8rem;
+		color: var(--header-bg);
+	}
+
+	.loading-state {
+		text-align: center;
+		padding: 5rem 0;
+		color: #666;
+	}
+
 	.spin {
 		animation: spin 1s linear infinite;
 		margin-bottom: 1rem;
-		color: #3b82f6;
+		color: var(--header-bg);
 	}
+
 	@keyframes spin {
 		from {
 			transform: rotate(0deg);

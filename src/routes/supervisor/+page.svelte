@@ -1,6 +1,15 @@
 <script lang="ts">
 	import { user, db, isSupervisor, isAdmin } from '$lib/firebase';
-	import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+	import {
+		collection,
+		query,
+		where,
+		onSnapshot,
+		doc,
+		updateDoc,
+		setDoc,
+		deleteDoc
+	} from 'firebase/firestore';
 	import { timetableData } from '$lib/timetableData';
 	import {
 		Users,
@@ -8,6 +17,8 @@
 		Clock,
 		BookOpen,
 		User,
+		UserCheck,
+		Lock,
 		AlertCircle,
 		Loader2,
 		ChevronLeft
@@ -16,6 +27,7 @@
 
 	let selectedTeacher = $state('');
 	let applications = $state<any[]>([]);
+	let restrictions = $state<string[]>([]);
 	let loading = $state(false);
 
 	const maxApplicants = 5;
@@ -123,38 +135,44 @@
 			return a.localeCompare(b);
 		});
 
-	// Firestore Listener (Fetch all apps for the current teacher's week)
-	let unsubscribe: () => void;
+	// Firestore Listener (Fetch all apps and restrictions for the current teacher's week)
+	let unsubscribeApps: () => void;
+	let unsubscribeRestricted: () => void;
+
 	function fetchApplications() {
 		if (!selectedTeacher) {
 			applications = [];
+			restrictions = [];
 			return;
 		}
 
-		if (unsubscribe) unsubscribe();
+		if (unsubscribeApps) unsubscribeApps();
+		if (unsubscribeRestricted) unsubscribeRestricted();
 
 		loading = true;
-		const q = query(
+
+		// Fetch Applications
+		const qApps = query(
 			collection(db, 'observation_applications'),
 			where('teacher', '==', selectedTeacher),
 			where('date', '>=', weekDates[0]),
 			where('date', '<=', weekDates[4])
 		);
 
-		unsubscribe = onSnapshot(
-			q,
-			(snapshot) => {
-				applications = snapshot.docs.map((doc) => ({
-					id: doc.id,
-					...doc.data()
-				}));
-				loading = false;
-			},
-			(error) => {
-				console.error('Error fetching applications:', error);
-				loading = false;
-			}
+		unsubscribeApps = onSnapshot(qApps, (snapshot) => {
+			applications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+			loading = false;
+		});
+
+		// Fetch Teacher Restrictions
+		const qRestricted = query(
+			collection(db, 'restricted_lessons'),
+			where('teacher', '==', selectedTeacher)
 		);
+
+		unsubscribeRestricted = onSnapshot(qRestricted, (snapshot) => {
+			restrictions = snapshot.docs.map((doc) => doc.id);
+		});
 	}
 
 	onMount(() => {
@@ -162,8 +180,38 @@
 	});
 
 	onDestroy(() => {
-		if (unsubscribe) unsubscribe();
+		if (unsubscribeApps) unsubscribeApps();
+		if (unsubscribeRestricted) unsubscribeRestricted();
 	});
+
+	async function toggleRestriction(date: string, period: string, classId: string) {
+		const restrictionId = `${selectedTeacher}_${date}_${period}_${classId}`;
+		const isCurrentlyRestricted = restrictions.includes(restrictionId);
+
+		try {
+			if (isCurrentlyRestricted) {
+				await deleteDoc(doc(db, 'restricted_lessons', restrictionId));
+			} else {
+				// Warn if there are already applications
+				const hasApps = applications.some(
+					(app) => app.date === date && app.period === period && app.classId === classId
+				);
+				if (hasApps && !confirm('이미 신청자가 있는 수업입니다. 참관 불가로 전환하시겠습니까?')) {
+					return;
+				}
+
+				await setDoc(doc(db, 'restricted_lessons', restrictionId), {
+					teacher: selectedTeacher,
+					date,
+					period,
+					classId,
+					updatedAt: new Date()
+				});
+			}
+		} catch (error) {
+			console.error('Error toggling restriction:', error);
+		}
+	}
 
 	async function approveApplication(appId: string) {
 		try {
@@ -294,7 +342,7 @@
 														: []}
 													{@const isRestricted = is7thPeriodRestricted(d, period)}
 
-													<td
+												<td
 														class="slot-cell {slot
 															? 'active'
 															: isRestricted
@@ -302,21 +350,37 @@
 																: 'empty'}"
 													>
 														{#if slot}
+															{@const restrictionId = `${selectedTeacher}_${d}_${period}_${slot.classId}`}
+															{@const isManuallyRestricted = restrictions.includes(restrictionId)}
+
 															<div
-																class="slot-content card"
-																style="background-color: {getSubjectColor(slot.subject)}15"
+																class="slot-content card {isManuallyRestricted ? 'manually-restricted' : ''}"
+																style="background-color: {getSubjectColor(slot.subject)}{isManuallyRestricted ? '05' : '15'}"
 															>
 																<div class="slot-info">
-																	<span
-																		class="subject"
-																		style="background-color: {getSubjectColor(slot.subject)}"
-																		>{slot.subject}</span
+																	<div class="info-left">
+																		<span
+																			class="subject"
+																			style="background-color: {getSubjectColor(slot.subject)}"
+																			>{slot.subject}</span
+																		>
+																		<span class="class-label"
+																			>{slot.classId.substring(0, 1)}-{parseInt(
+																				slot.classId.substring(2)
+																			)}</span
+																		>
+																	</div>
+																	<button 
+																		class="btn-toggle-restriction {isManuallyRestricted ? 'restricted' : ''}"
+																		onclick={() => toggleRestriction(d, period, slot.classId)}
+																		title={isManuallyRestricted ? "참관 가능으로 변경" : "참관 불가로 설정"}
 																	>
-																	<span class="class-label"
-																		>{slot.classId.substring(0, 1)}-{parseInt(
-																			slot.classId.substring(2)
-																		)}</span
-																	>
+																		{#if isManuallyRestricted}
+																			<Lock size={12} /> 불가
+																		{:else}
+																			<UserCheck size={12} /> 가능
+																		{/if}
+																	</button>
 																</div>
 																<div class="status-box">
 																	<div class="applicant-count">
@@ -325,7 +389,7 @@
 																	</div>
 																</div>
 
-																{#if apps.length > 0}
+																{#if !isManuallyRestricted && apps.length > 0}
 																	<div class="applicant-list">
 																		<!-- 승인된 명단 -->
 																		{#each apps.filter((a) => a.status === 'APPROVED') as app}
@@ -349,6 +413,10 @@
 																				<span class="approve-label">승인</span>
 																			</button>
 																		{/each}
+																	</div>
+																{:else if isManuallyRestricted}
+																	<div class="restriction-notice">
+																		참관 차단됨
 																	</div>
 																{/if}
 															</div>
@@ -604,6 +672,59 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.3rem;
+	}
+
+	.info-left {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+
+	.btn-toggle-restriction {
+		background: #f1f5f9;
+		color: #64748b;
+		border: 1px solid #e2e8f0;
+		padding: 0.15rem 0.4rem;
+		border-radius: 4px;
+		font-size: 0.7rem;
+		font-weight: 800;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		gap: 0.2rem;
+		transition: all 0.2s;
+	}
+
+	.btn-toggle-restriction:hover {
+		background: #e2e8f0;
+	}
+
+	.btn-toggle-restriction.restricted {
+		background: #fee2e2;
+		color: #ef4444;
+		border-color: #fecaca;
+	}
+
+	.manually-restricted {
+		opacity: 0.7;
+		background-image: repeating-linear-gradient(
+			45deg,
+			transparent,
+			transparent 10px,
+			rgba(0, 0, 0, 0.02) 10px,
+			rgba(0, 0, 0, 0.02) 20px
+		);
+	}
+
+	.restriction-notice {
+		margin-top: 0.5rem;
+		font-size: 0.75rem;
+		color: #ef4444;
+		font-weight: 800;
+		text-align: center;
+		background: rgba(239, 68, 68, 0.1);
+		padding: 0.2rem;
+		border-radius: 4px;
 	}
 
 	.subject {
