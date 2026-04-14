@@ -356,7 +356,7 @@
 														: []}
 													{@const isRestricted = is7thPeriodRestricted(d, period)}
 
-												<td
+													<td
 														class="slot-cell {slot
 															? 'active'
 															: isRestricted
@@ -368,8 +368,14 @@
 															{@const isManuallyRestricted = restrictions.includes(restrictionId)}
 
 															<div
-																class="slot-content card {isManuallyRestricted ? 'manually-restricted' : ''}"
-																style="background-color: {getSubjectColor(slot.subject)}{isManuallyRestricted ? '05' : '15'}"
+																class="slot-content card {isManuallyRestricted
+																	? 'manually-restricted'
+																	: ''}"
+																style="background-color: {getSubjectColor(
+																	slot.subject
+																)}{isManuallyRestricted
+																	? '10'
+																	: '33'}; border: 1px solid {getSubjectColor(slot.subject)}80;"
 															>
 																<div class="slot-info">
 																	<div class="info-left">
@@ -384,10 +390,14 @@
 																			)}</span
 																		>
 																	</div>
-																	<button 
-																		class="btn-toggle-restriction {isManuallyRestricted ? 'restricted' : ''}"
+																	<button
+																		class="btn-toggle-restriction {isManuallyRestricted
+																			? 'restricted'
+																			: ''}"
 																		onclick={() => toggleRestriction(d, period, slot.classId)}
-																		title={isManuallyRestricted ? "참관 가능으로 변경" : "참관 불가로 설정"}
+																		title={isManuallyRestricted
+																			? '참관 가능으로 변경'
+																			: '참관 불가로 설정'}
 																	>
 																		{#if isManuallyRestricted}
 																			<Lock size={12} /> 불가
@@ -429,9 +439,7 @@
 																		{/each}
 																	</div>
 																{:else if isManuallyRestricted}
-																	<div class="restriction-notice">
-																		참관 차단됨
-																	</div>
+																	<div class="restriction-notice">참관 차단됨</div>
 																{/if}
 															</div>
 														{:else if isRestricted}
@@ -677,7 +685,6 @@
 		flex-direction: column;
 		gap: 0.4rem; /* Reduced gap */
 		padding: 0.5rem !important; /* Reduced padding */
-		border: 1px solid #eee;
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 	}
 
