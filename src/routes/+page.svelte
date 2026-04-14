@@ -1,6 +1,15 @@
 <script lang="ts">
 	import { user, isAdmin, isSupervisor, db, logout, userRole } from '$lib/firebase';
-	import { Calendar, ArrowRight, Lock, ShieldCheck, AlertCircle, Users, Info, UserCheck } from 'lucide-svelte';
+	import {
+		Calendar,
+		ArrowRight,
+		Lock,
+		ShieldCheck,
+		AlertCircle,
+		Users,
+		Info,
+		UserCheck
+	} from 'lucide-svelte';
 	import { doc, getDoc } from 'firebase/firestore';
 	import { onMount } from 'svelte';
 
@@ -12,41 +21,14 @@
 		{ date: '2026-05-15', label: '5월 15일(금)' }
 	];
 
-	let isWhitelisted = $state(true);
 	let checking = $state(true);
 
-	async function checkWhitelist() {
-		if (!$user) {
-			checking = false;
-			return;
-		}
-		// 관리자나 지도교사는 화이트리스트 체크 제외 (항상 허용)
-		if ($isAdmin || $isSupervisor) {
-			isWhitelisted = true;
-			checking = false;
-			return;
-		}
-
-		try {
-			const docSnap = await getDoc(doc(db, "settings", "admin_whitelist"));
-			if (docSnap.exists()) {
-				const adminList = docSnap.data().emails || [];
-				isWhitelisted = adminList.includes($user.email);
-			} else {
-				// 화이트리스트가 없으면 기본적으로 학생 권한은 허용 (또는 정책에 따라 변경)
-				isWhitelisted = true; 
-			}
-		} catch (e) {
-			console.error("Whitelist check error:", e);
-			isWhitelisted = true;
-		} finally {
-			checking = false;
-		}
-	}
-
 	$effect(() => {
-		if ($user && $userRole !== null) checkWhitelist();
-		else if (!$user) checking = false;
+		if ($user && $userRole !== null) {
+			checking = false;
+		} else if (!$user) {
+			checking = false;
+		}
 	});
 </script>
 
@@ -61,21 +43,15 @@
 				<Lock size={64} />
 			</div>
 			<h2>🔒 로그인 후 이용 가능합니다</h2>
-			<p>본 시스템은 서울사대부여중 교육실습생 전용입니다.<br />학교 계정(@snu-g.ms.kr)으로 로그인해 주세요.</p>
-		</div>
-	{:else if !isWhitelisted}
-		<div class="login-screen card error">
-			<div class="lock-icon danger">
-				<AlertCircle size={64} />
-			</div>
-			<h2>🚫 접근이 거부되었습니다</h2>
-			<p>시스템 이용 권한이 없습니다. 관리자에게 문의해 주세요.<br />(접속 계정: {$user.email})</p>
-			<button class="btn btn-primary" on:click={logout}>다른 계정으로 로그인</button>
+			<p>
+				본 시스템은 서울사대부여중 교육실습생 전용입니다.<br />학교 계정(@snu-g.ms.kr)으로 로그인해
+				주세요.
+			</p>
 		</div>
 	{:else}
 		<section class="welcome card">
 			<div class="welcome-text">
-				<h2>👋 안녕하세요, {$user.displayName} 선생님!</h2>
+				<h2>안녕하세요, {$user.displayName} 선생님!</h2>
 				<p>참관하고 싶은 날짜를 선택하여 시간표를 확인하고 신청해 주세요.</p>
 				<div class="badge-group">
 					{#if $isAdmin}

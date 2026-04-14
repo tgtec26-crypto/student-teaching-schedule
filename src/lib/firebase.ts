@@ -1,16 +1,22 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, getDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import {
+	getAuth,
+	GoogleAuthProvider,
+	signInWithPopup,
+	signOut,
+	onAuthStateChanged
+} from 'firebase/auth';
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 
 const firebaseConfig = {
-	apiKey: "AIzaSyAWk9OxdEFTtQ3pvErnkSEki65BMHFD46k",
-	authDomain: "testprojecttgtec.firebaseapp.com",
-	projectId: "testprojecttgtec",
-	storageBucket: "testprojecttgtec.firebasestorage.app",
-	messagingSenderId: "414637479547",
-	appId: "1:414637479547:web:7519a3f42b8475946334de"
+	apiKey: 'AIzaSyAWk9OxdEFTtQ3pvErnkSEki65BMHFD46k',
+	authDomain: 'testprojecttgtec.firebaseapp.com',
+	projectId: 'testprojecttgtec',
+	storageBucket: 'testprojecttgtec.firebasestorage.app',
+	messagingSenderId: '414637479547',
+	appId: '1:414637479547:web:7519a3f42b8475946334de'
 };
 
 // Initialize Firebase
@@ -27,8 +33,11 @@ export const userRole = writable<UserRole>(null);
 
 // Derived Stores for UI convenience
 export const isAdmin = derived(userRole, ($role) => $role === 'ADMIN');
-export const isSupervisor = derived(userRole, ($role) => $role === 'SUPERVISOR');
-export const isStudent = derived(userRole, ($role) => $role === 'STUDENT');
+export const isSupervisor = derived(
+	userRole,
+	($role) => $role === 'SUPERVISOR' || $role === 'ADMIN'
+);
+export const isStudent = derived(userRole, ($role) => $role === 'STUDENT' || $role === 'ADMIN');
 
 // Cookie Sync for Server-Side Protection
 function setRoleCookie(role: UserRole) {
@@ -46,7 +55,7 @@ function setRoleCookie(role: UserRole) {
 async function syncUser(u: any): Promise<UserRole> {
 	if (!u || !u.email) return null;
 
-	const userRef = doc(db, "users", u.email);
+	const userRef = doc(db, 'users', u.email);
 	const docSnap = await getDoc(userRef);
 
 	if (!docSnap.exists()) {
@@ -64,12 +73,16 @@ async function syncUser(u: any): Promise<UserRole> {
 		return role;
 	} else {
 		// Existing user: update last login and profile info
-		await setDoc(userRef, {
-			displayName: u.displayName,
-			photoURL: u.photoURL,
-			lastLogin: serverTimestamp()
-		}, { merge: true });
-		
+		await setDoc(
+			userRef,
+			{
+				displayName: u.displayName,
+				photoURL: u.photoURL,
+				lastLogin: serverTimestamp()
+			},
+			{ merge: true }
+		);
+
 		const role = docSnap.data().role;
 		// Migration from old 'USER' role if necessary
 		if (role === 'USER') return 'STUDENT';
@@ -97,8 +110,8 @@ export async function login() {
 		const result = await signInWithPopup(auth, googleProvider);
 		return result.user;
 	} catch (error: any) {
-		console.error("Login Error:", error);
-		alert("로그인 중 오류가 발생했습니다: " + error.message);
+		console.error('Login Error:', error);
+		alert('로그인 중 오류가 발생했습니다: ' + error.message);
 	}
 }
 
@@ -107,6 +120,6 @@ export async function logout() {
 		await signOut(auth);
 		setRoleCookie(null);
 	} catch (error) {
-		console.error("Logout Error:", error);
+		console.error('Logout Error:', error);
 	}
 }

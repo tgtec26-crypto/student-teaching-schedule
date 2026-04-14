@@ -2,7 +2,17 @@
 	import { user, db, isAdmin, type UserRole } from '$lib/firebase';
 	import { collection, getDocs, doc, updateDoc, query, orderBy, setDoc } from 'firebase/firestore';
 	import { onMount } from 'svelte';
-	import { Shield, Save, Users, AlertCircle, CheckCircle2, UserCog, Mail, ShieldCheck, UserPlus } from 'lucide-svelte';
+	import {
+		Shield,
+		Save,
+		Users,
+		AlertCircle,
+		CheckCircle2,
+		UserCog,
+		Mail,
+		ShieldCheck,
+		UserPlus
+	} from 'lucide-svelte';
 
 	let usersList = $state<any[]>([]);
 	let loading = $state(true);
@@ -19,14 +29,14 @@
 	async function fetchUsers() {
 		loading = true;
 		try {
-			const q = query(collection(db, "users"), orderBy("email", "asc"));
+			const q = query(collection(db, 'users'), orderBy('email', 'asc'));
 			const querySnapshot = await getDocs(q);
-			usersList = querySnapshot.docs.map(doc => ({
+			usersList = querySnapshot.docs.map((doc) => ({
 				id: doc.id,
 				...doc.data()
 			}));
 		} catch (e) {
-			console.error("Users load error:", e);
+			console.error('Users load error:', e);
 			message = { text: '사용자 목록을 불러오는 중 오류가 발생했습니다.', type: 'error' };
 		} finally {
 			loading = false;
@@ -46,8 +56,8 @@
 		// Split by newline or comma, trim, and filter valid emails
 		const emails = bulkEmailsInput
 			.split(/[\n,]/)
-			.map(e => e.trim().toLowerCase())
-			.filter(e => e.length > 0 && e.includes('@'));
+			.map((e) => e.trim().toLowerCase())
+			.filter((e) => e.length > 0 && e.includes('@'));
 
 		if (emails.length === 0) {
 			alert('유효한 이메일 형식이 없습니다.');
@@ -64,21 +74,28 @@
 
 		try {
 			for (const email of emails) {
-				const userRef = doc(db, "users", email);
-				await setDoc(userRef, {
-					email: email,
-					role: newUserRole,
-					updatedAt: new Date(),
-					updatedBy: $user?.email
-				}, { merge: true });
+				const userRef = doc(db, 'users', email);
+				await setDoc(
+					userRef,
+					{
+						email: email,
+						role: newUserRole,
+						updatedAt: new Date(),
+						updatedBy: $user?.email
+					},
+					{ merge: true }
+				);
 				successCount++;
 			}
 
-			message = { text: `${successCount}명의 사용자가 성공적으로 등록되었습니다.`, type: 'success' };
+			message = {
+				text: `${successCount}명의 사용자가 성공적으로 등록되었습니다.`,
+				type: 'success'
+			};
 			bulkEmailsInput = '';
 			fetchUsers();
 		} catch (e: any) {
-			console.error("Bulk add error:", e);
+			console.error('Bulk add error:', e);
 			message = { text: '사용자 등록 중 일부 오류가 발생했습니다: ' + e.message, type: 'error' };
 		} finally {
 			adding = false;
@@ -90,21 +107,21 @@
 			fetchUsers();
 			return;
 		}
-		
+
 		saving = email;
 		message = { text: '', type: '' };
 
 		try {
-			const userRef = doc(db, "users", email);
+			const userRef = doc(db, 'users', email);
 			await updateDoc(userRef, {
 				role: newRole,
 				updatedAt: new Date(),
 				updatedBy: $user?.email
 			});
 			message = { text: `${email}의 권한이 ${newRole}(으)로 변경되었습니다.`, type: 'success' };
-			usersList = usersList.map(u => u.email === email ? { ...u, role: newRole } : u);
+			usersList = usersList.map((u) => (u.email === email ? { ...u, role: newRole } : u));
 		} catch (e: any) {
-			console.error("Update error:", e);
+			console.error('Update error:', e);
 			message = { text: '권한 변경 중 오류가 발생했습니다: ' + e.message, type: 'error' };
 			fetchUsers();
 		} finally {
@@ -140,9 +157,9 @@
 				<div class="add-user-form bulk">
 					<div class="input-group full-width">
 						<label for="bulk-emails">이메일 목록 (줄바꿈 또는 쉼표로 구분)</label>
-						<textarea 
+						<textarea
 							id="bulk-emails"
-							bind:value={bulkEmailsInput} 
+							bind:value={bulkEmailsInput}
 							placeholder="user1@snu-g.ms.kr&#10;user2@snu-g.ms.kr, user3@snu-g.ms.kr"
 							disabled={adding}
 						></textarea>
@@ -156,7 +173,11 @@
 								{/each}
 							</select>
 						</div>
-						<button class="btn btn-add" on:click={addUsers} disabled={adding || !bulkEmailsInput.trim()}>
+						<button
+							class="btn btn-add"
+							on:click={addUsers}
+							disabled={adding || !bulkEmailsInput.trim()}
+						>
 							<Save size={18} />
 							{adding ? '처리 중...' : '사용자 일괄 등록'}
 						</button>
@@ -180,7 +201,7 @@
 						</div>
 					{/if}
 				</div>
-				
+
 				{#if loading}
 					<div class="loading">사용자 목록을 불러오는 중...</div>
 				{:else}
@@ -199,7 +220,11 @@
 									<tr class:is-admin={u.role === 'ADMIN'}>
 										<td>
 											<div class="user-info">
-												<img src={u.photoURL || '/school-logo.svg'} alt={u.displayName} class="avatar" />
+												<img
+													src={u.photoURL || '/school-logo.svg'}
+													alt={u.displayName}
+													class="avatar"
+												/>
 												<span class="name">{u.displayName || '미가입 사용자'}</span>
 											</div>
 										</td>
@@ -215,9 +240,10 @@
 											</span>
 										</td>
 										<td>
-											<select 
-												value={u.role} 
-												on:change={(e) => updateUserRole(u.email, e.currentTarget.value as UserRole)}
+											<select
+												value={u.role}
+												on:change={(e) =>
+													updateUserRole(u.email, e.currentTarget.value as UserRole)}
 												disabled={saving === u.email || u.email === 'tgtec26@snu-g.ms.kr'}
 											>
 												{#each roles as role}
@@ -242,10 +268,21 @@
 					<h3>💡 관리자 가이드</h3>
 				</div>
 				<ul>
-					<li><strong>일괄 추가:</strong> 여러 개의 이메일을 엔터(줄바꿈)나 쉼표로 구분하여 한꺼번에 등록할 수 있습니다.</li>
-					<li><strong>권한 자동 부여:</strong> 등록 시 선택한 권한이 입력한 모든 사용자에게 동일하게 적용됩니다.</li>
-					<li><strong>로그인 허용:</strong> 화이트리스트에 등록된 이메일로 로그인하는 사용자만 시스템을 이용할 수 있습니다.</li>
-					<li><strong>이름 자동 연동:</strong> 사용자가 최초 로그인 시 구글 계정의 이름이 자동으로 목록에 나타납니다.</li>
+					<li>
+						<strong>일괄 추가:</strong> 여러 개의 이메일을 엔터(줄바꿈)나 쉼표로 구분하여 한꺼번에 등록할
+						수 있습니다.
+					</li>
+					<li>
+						<strong>권한 자동 부여:</strong> 등록 시 선택한 권한이 입력한 모든 사용자에게 동일하게 적용됩니다.
+					</li>
+					<li>
+						<strong>로그인 허용:</strong> 화이트리스트에 등록된 이메일로 로그인하는 사용자만 시스템을
+						이용할 수 있습니다.
+					</li>
+					<li>
+						<strong>이름 자동 연동:</strong> 사용자가 최초 로그인 시 구글 계정의 이름이 자동으로 목록에
+						나타납니다.
+					</li>
 				</ul>
 			</aside>
 		</div>
@@ -370,7 +407,9 @@
 		padding-bottom: 0.8rem;
 	}
 
-	.section-header h3 { margin: 0; }
+	.section-header h3 {
+		margin: 0;
+	}
 
 	.message {
 		margin-left: auto;
@@ -383,8 +422,14 @@
 		border-radius: 6px;
 	}
 
-	.message.success { background: #e6fffa; color: #2c7a7b; }
-	.message.error { background: #fff5f5; color: #c53030; }
+	.message.success {
+		background: #e6fffa;
+		color: #2c7a7b;
+	}
+	.message.error {
+		background: #fff5f5;
+		color: #c53030;
+	}
 
 	.table-container {
 		overflow-x: auto;
@@ -454,9 +499,18 @@
 		text-transform: uppercase;
 	}
 
-	.role-badge.student { background: #edf2f7; color: #4a5568; }
-	.role-badge.supervisor { background: #feebc8; color: #c05621; }
-	.role-badge.admin { background: #c6f6d5; color: #22543d; }
+	.role-badge.student {
+		background: #edf2f7;
+		color: #4a5568;
+	}
+	.role-badge.supervisor {
+		background: #feebc8;
+		color: #c05621;
+	}
+	.role-badge.admin {
+		background: #c6f6d5;
+		color: #22543d;
+	}
 
 	select {
 		padding: 0.4rem 0.6rem;

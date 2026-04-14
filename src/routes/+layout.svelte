@@ -8,11 +8,15 @@
 
 	// observation/[date] 페이지인 경우 날짜 정보를 가져옴
 	const dateParam = $derived(page.params.date);
-	const formattedDate = $derived(dateParam ? new Date(dateParam).toLocaleDateString('ko-KR', {
-		month: 'long',
-		day: 'numeric',
-		weekday: 'short'
-	}) : '');
+	const formattedDate = $derived(
+		dateParam
+			? new Date(dateParam).toLocaleDateString('ko-KR', {
+					month: 'long',
+					day: 'numeric',
+					weekday: 'short'
+				})
+			: ''
+	);
 </script>
 
 <header class="header-container">
@@ -21,7 +25,7 @@
 			<a href="/" class="header-link">
 				<h1 class="header-title"><span class="accent">SNUG</span> 교육실습 참관 신청</h1>
 			</a>
-			
+
 			{#if formattedDate}
 				<div class="header-subtitle-area">
 					<a href="/" class="btn-back-header">
@@ -65,7 +69,6 @@
 		background-color: var(--header-bg);
 		color: white;
 		padding: 2.5rem 1.5rem;
-		border-bottom: 5px solid var(--accent-green);
 	}
 
 	.header-inner {
@@ -143,13 +146,13 @@
 		font-size: 1.5rem;
 		font-weight: 700;
 		color: white;
-		text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+		text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 	}
 
 	.header-logo {
 		width: 100px;
 		height: 100px;
-		filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2));
+		filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
 	}
 
 	.auth-box {
