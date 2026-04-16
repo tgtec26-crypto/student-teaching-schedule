@@ -30,7 +30,7 @@
 	const date = page.params.date ?? '';
 
 	// State for View Mode
-	let viewMode = $state<'grade' | 'teacher' | 'my'>('grade');
+	let viewMode = $state<'grade' | 'teacher' | 'my'>('teacher');
 	let selectedGrade = $state(1);
 	let selectedTeacher = $state<string | null>(null);
 
@@ -309,6 +309,17 @@
 		</div>
 	{:else}
 		<nav class="main-nav">
+		<button
+			class="nav-item teacher-tab {viewMode === 'teacher' ? 'active' : ''}"
+			onclick={() => {
+				viewMode = 'teacher';
+				selectedTeacher = null;
+				selectedGrade = 0;
+			}}
+		>
+			<BookOpen size={18} /> 교사별
+		</button>
+		<div class="divider"></div>
 		<div class="grade-tabs">
 			{#each grades as g}
 				<button
@@ -323,17 +334,6 @@
 				</button>
 			{/each}
 		</div>
-		<div class="divider"></div>
-		<button
-			class="nav-item teacher-tab {viewMode === 'teacher' ? 'active' : ''}"
-			onclick={() => {
-				viewMode = 'teacher';
-				selectedTeacher = null;
-				selectedGrade = 0;
-			}}
-		>
-			<BookOpen size={18} /> 교사별
-		</button>
 		<div class="divider"></div>
 		<button
 			class="nav-item my-tab {viewMode === 'my' ? 'active' : ''}"

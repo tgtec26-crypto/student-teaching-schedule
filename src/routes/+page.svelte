@@ -226,7 +226,7 @@
 	.date-grid {
 		display: grid;
 		grid-template-columns: repeat(5, 1fr);
-		gap: 0.6rem;
+		gap: 0.8rem;
 		margin-top: 1rem;
 	}
 
@@ -237,7 +237,7 @@
 		flex-direction: column;
 		justify-content: center;
 		min-height: auto;
-		height: 80px;
+		height: 100px;
 		padding: 0.6rem 0.8rem !important;
 		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 		border: 1px solid #eee;
@@ -283,7 +283,7 @@
 		color: var(--header-bg);
 	}
 
-	@media (max-width: 1100px) {
+	@media (max-width: 1000px) {
 		.date-grid {
 			grid-template-columns: repeat(2, 1fr);
 		}

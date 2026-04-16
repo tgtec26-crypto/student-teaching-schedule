@@ -27,8 +27,8 @@ export const teacherWebhooks: Record<string, string> = {
 		'https://chat.googleapis.com/v1/spaces/AAQAldfCCaE/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=d_PRLWAJ3Z2iRxA33_a6l063KQkDx9yMvPfuCVZZEnY',
 	정안나:
 		'https://chat.googleapis.com/v1/spaces/AAQAakv5Cv4/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=oFwQdR5rCuuri1VPGRU_s_Tt6VzpRxyp1wBn0YU819A',
-	허지민:
-		'https://chat.googleapis.com/v1/spaces/AAQAfSz5IfA/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=Qlmo2kNyg4PaLbblUoBz0PXCAak_mfTiJlg5nRQs-BQ',
+	이의진:
+		'https://chat.googleapis.com/v1/spaces/xfYjAyAAAAE/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=BC4TGAgwlp0vSDlQl4e39u4my5E9th76RwBA5O_XaUw',
 	정자연:
 		'https://chat.googleapis.com/v1/spaces/AAQA1sXIvf0/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=QDGoTo_HgQGziozDcQj7ZnJXQeCE8eMSETVQPdYcWik',
 	주예진:

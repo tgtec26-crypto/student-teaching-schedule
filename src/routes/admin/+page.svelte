@@ -34,9 +34,9 @@
 		'histoedu@snu-g.ms.kr': { name: '정재선', subject: '역사' },
 		'izoayuri@snu-g.ms.kr': { name: '노유리', subject: '도덕' },
 		'jan422@snu-g.ms.kr': { name: '정안나', subject: '국어' },
-		'jimin20001@snu-g.ms.kr': { name: '허지민', subject: '영어' },
+		'euijin_lee@snu-g.ms.kr': { name: '이의진', subject: '영어' },
 		'jjy2025@snu-g.ms.kr': { name: '정자연', subject: '영어' },
-		'joo0306@snu-g.ms.kr': { name: '주예진', subject: '지구과학' },
+		'joo0306@snu-g.ms.kr': { name: '주예진', subject: '지구' },
 		'joo701@snu-g.ms.kr': { name: '주지원', subject: '체육' },
 		'joynobu@snu-g.ms.kr': { name: '김기현', subject: '물리' },
 		'jungyeji0902@snu-g.ms.kr': { name: '정예지', subject: '미술' },
@@ -45,7 +45,7 @@
 		'luckyk00@snu-g.ms.kr': { name: '이윤경', subject: '음악' },
 		'm22m@snu-g.ms.kr': { name: '최미정', subject: '역사' },
 		'mint0026@snu-g.ms.kr': { name: '이선미', subject: '수학' },
-		'optimist7@snu-g.ms.kr': { name: '유수형', subject: '과학' },
+		'optimist7@snu-g.ms.kr': { name: '유수형', subject: '화학' },
 		'peabody@snu-g.ms.kr': { name: '김지영', subject: '수학' },
 		'phr3635@snu-g.ms.kr': { name: '박혜리', subject: '영어' },
 		'popartry@snu-g.ms.kr': { name: '이경재', subject: '미술' },
@@ -54,11 +54,26 @@
 		'rugger8kr@snu-g.ms.kr': { name: '이성운', subject: '체육' },
 		'squarelip@snu-g.ms.kr': { name: '김은희', subject: '과학' },
 		'terror14@snu-g.ms.kr': { name: '황경진', subject: '사회' },
-		'tgtec26@snu-g.ms.kr': { name: '최종훈', subject: '과학' },
+		'tgtec26@snu-g.ms.kr': { name: '최종훈', subject: '생명' },
 		'umbang55@snu-g.ms.kr': { name: '엄인우', subject: '체육' },
 		'urimal@snu-g.ms.kr': { name: '최인영', subject: '국어' },
-		'waniwh35@snu-g.ms.kr': { name: '강신완', subject: '영어' }
+		'waniwh35@snu-g.ms.kr': { name: '강신완', subject: '영어' },
+		'mk066541@snu-g.ms.kr': { name: '김미경', subject: '국어' },
+		'limjisoo0519@snu-g.ms.kr': { name: '임지수', subject: '스포츠' },
+		'kro9299@snu-g.ms.kr': { name: '강라온', subject: '스포츠' },
+		'kjm3542@snu-g.ms.kr': { name: '강지민', subject: '스포츠' }
 	};
+
+	const subjectOrder = [
+		'국어', '한문', '수학', '도덕', '사회', '역사', '물리', '화학', '생명', '지구', 
+		'과학', '영어', '기가', '기술', '가정', '체육', '음악', '미술', '진로', '정보', 
+		'스포츠', '주제', '동아리'
+	];
+
+	function getSubjectIndex(subject: string) {
+		const index = subjectOrder.indexOf(subject);
+		return index === -1 ? 999 : index;
+	}
 
 	function getDisplayUserInfo(u: any) {
 		if (u.displayName) return u.displayName;
@@ -71,7 +86,7 @@
 
 	let usersList = $state<any[]>([]);
 
-	// Derived sorted users list: 1st by role (ADMIN > SUPERVISOR > STUDENT), 2nd by name
+	// Derived sorted users list: 1st by role (ADMIN > SUPERVISOR > STUDENT), 2nd by subject (if SUPERVISOR), 3rd by name
 	const rolePriority: Record<UserRole, number> = {
 		ADMIN: 1,
 		SUPERVISOR: 2,
@@ -84,7 +99,16 @@
 			const roleDiff = (rolePriority[a.role as UserRole] || 99) - (rolePriority[b.role as UserRole] || 99);
 			if (roleDiff !== 0) return roleDiff;
 
-			// 2nd Priority: Name (using getDisplayUserInfo)
+			// 2nd Priority: Subject (if SUPERVISOR)
+			if (a.role === 'SUPERVISOR' && b.role === 'SUPERVISOR') {
+				const subjectA = teacherMetadata[a.email]?.subject || '';
+				const subjectB = teacherMetadata[b.email]?.subject || '';
+				const indexA = getSubjectIndex(subjectA);
+				const indexB = getSubjectIndex(subjectB);
+				if (indexA !== indexB) return indexA - indexB;
+			}
+
+			// 3rd Priority: Name (using getDisplayUserInfo)
 			const nameA = getDisplayUserInfo(a);
 			const nameB = getDisplayUserInfo(b);
 			return nameA.localeCompare(nameB, 'ko');
@@ -255,6 +279,40 @@
 		} catch (e: any) {
 			console.error('Delete error:', e);
 			message = { text: '사용자 삭제 중 오류가 발생했습니다: ' + e.message, type: 'error' };
+		}
+	}
+
+	async function resetApplications() {
+		if (!confirm('모든 참관 신청 및 승인 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
+			return;
+		}
+
+		try {
+			const q = query(collection(db, 'observation_applications'));
+			const snapshot = await getDocs(q);
+			const deletePromises = snapshot.docs.map((d) => deleteDoc(d.ref));
+			await Promise.all(deletePromises);
+			message = { text: '모든 참관 신청 데이터가 삭제되었습니다.', type: 'success' };
+		} catch (e: any) {
+			console.error('Reset applications error:', e);
+			message = { text: '데이터 삭제 중 오류가 발생했습니다: ' + e.message, type: 'error' };
+		}
+	}
+
+	async function resetRestrictions() {
+		if (!confirm('모든 개별 수업 참관 불가 설정을 초기화하시겠습니까?\n선생님들이 직접 설정한 데이터가 모두 삭제됩니다.')) {
+			return;
+		}
+
+		try {
+			const q = query(collection(db, 'restricted_lessons'));
+			const snapshot = await getDocs(q);
+			const deletePromises = snapshot.docs.map((d) => deleteDoc(d.ref));
+			await Promise.all(deletePromises);
+			message = { text: '모든 참관 불가 설정이 초기화되었습니다.', type: 'success' };
+		} catch (e: any) {
+			console.error('Reset restrictions error:', e);
+			message = { text: '데이터 초기화 중 오류가 발생했습니다: ' + e.message, type: 'error' };
 		}
 	}
 </script>
@@ -445,6 +503,29 @@
 					</li>
 				</ul>
 			</aside>
+
+			<!-- Maintenance Section -->
+			<section class="maintenance-section card">
+				<div class="section-header">
+					<AlertCircle size={20} />
+					<h3>시스템 데이터 초기화 (테스트용)</h3>
+				</div>
+				<div class="maintenance-content">
+					<p class="warning-text">
+						2차 테스트를 위해 기존 데이터를 정리합니다. 삭제된 데이터는 복구할 수 없습니다.
+					</p>
+					<div class="maintenance-actions">
+						<button class="btn btn-danger" onclick={resetApplications}>
+							<Trash2 size={18} />
+							참관 신청 및 승인 데이터 전체 삭제
+						</button>
+						<button class="btn btn-warning" onclick={resetRestrictions}>
+							<Trash2 size={18} />
+							개별 수업 참관 불가 설정 초기화
+						</button>
+					</div>
+				</div>
+			</section>
 		</div>
 	{/if}
 </div>
@@ -775,5 +856,66 @@
 		flex-direction: column;
 		align-items: center;
 		gap: 1rem;
+	}
+
+	.maintenance-section {
+		border: 2px solid #fee2e2;
+		background-color: #fffafb;
+	}
+
+	.maintenance-content {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.warning-text {
+		color: #e53e3e;
+		font-weight: 600;
+		font-size: 0.95rem;
+	}
+
+	.maintenance-actions {
+		display: flex;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.btn-danger {
+		background-color: #e63946;
+		color: white;
+		border: none;
+		padding: 0.7rem 1.5rem;
+		border-radius: 8px;
+		font-weight: 700;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.btn-danger:hover {
+		background-color: #c53030;
+		transform: translateY(-1px);
+	}
+
+	.btn-warning {
+		background-color: #f6ad55;
+		color: white;
+		border: none;
+		padding: 0.7rem 1.5rem;
+		border-radius: 8px;
+		font-weight: 700;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.btn-warning:hover {
+		background-color: #ed8936;
+		transform: translateY(-1px);
 	}
 </style>
