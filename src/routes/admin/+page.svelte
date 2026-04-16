@@ -12,21 +12,85 @@
 		deleteDoc
 	} from 'firebase/firestore';
 	import { onMount } from 'svelte';
-	import {
-		Shield,
-		Save,
-		Users,
-		AlertCircle,
-		CheckCircle2,
-		UserCog,
-		Mail,
-		ShieldCheck,
-		UserPlus,
-		Lock,
-		Unlock
-	} from 'lucide-svelte';
+	import { Shield, Save, Users, AlertCircle, CheckCircle2, UserCog, Mail, ShieldCheck, UserPlus, Lock, Unlock, Trash2 } from 'lucide-svelte';
+	import { timetableData } from '$lib/timetableData';
+
+	// Teacher metadata for matching
+	const teacherMetadata: Record<string, { name: string; subject: string }> = {
+		'7620220@snu-g.ms.kr': { name: '교장 선생님', subject: '' },
+		'hellokks@snu-g.ms.kr': { name: '교감 선생님', subject: '' },
+		'mismoon32@snu-g.ms.kr': { name: '문인숙', subject: '진로' },
+		'bibianna.edu@snu-g.ms.kr': { name: '김민정', subject: '사회' },
+		'bohem1223@snu-g.ms.kr': { name: '전태상', subject: '음악' },
+		'bomi822@snu-g.ms.kr': { name: '김보미', subject: '한문' },
+		'dbwls131@snu-g.ms.kr': { name: '김유진', subject: '국어' },
+		'emfrhc@snu-g.ms.kr': { name: '송윤호', subject: '수학' },
+		'ghfkd259@snu-g.ms.kr': { name: '서강혁', subject: '정보' },
+		'gimmewrong@snu-g.ms.kr': { name: '김일홍', subject: '수학' },
+		'hapum411@snu-g.ms.kr': { name: '이지애', subject: '국어' },
+		'heav92@snu-g.ms.kr': { name: '최기옥', subject: '기가' },
+		'heed.yooli@snu-g.ms.kr': { name: '강율이', subject: '기가' },
+		'hgcking@snu-g.ms.kr': { name: '황규창', subject: '체육' },
+		'histoedu@snu-g.ms.kr': { name: '정재선', subject: '역사' },
+		'izoayuri@snu-g.ms.kr': { name: '노유리', subject: '도덕' },
+		'jan422@snu-g.ms.kr': { name: '정안나', subject: '국어' },
+		'jimin20001@snu-g.ms.kr': { name: '허지민', subject: '영어' },
+		'jjy2025@snu-g.ms.kr': { name: '정자연', subject: '영어' },
+		'joo0306@snu-g.ms.kr': { name: '주예진', subject: '지구과학' },
+		'joo701@snu-g.ms.kr': { name: '주지원', subject: '체육' },
+		'joynobu@snu-g.ms.kr': { name: '김기현', subject: '물리' },
+		'jungyeji0902@snu-g.ms.kr': { name: '정예지', subject: '미술' },
+		'lhj8631@snu-g.ms.kr': { name: '이현진', subject: '국어' },
+		'likejc@snu-g.ms.kr': { name: '이재국', subject: '기가' },
+		'luckyk00@snu-g.ms.kr': { name: '이윤경', subject: '음악' },
+		'm22m@snu-g.ms.kr': { name: '최미정', subject: '역사' },
+		'mint0026@snu-g.ms.kr': { name: '이선미', subject: '수학' },
+		'optimist7@snu-g.ms.kr': { name: '유수형', subject: '과학' },
+		'peabody@snu-g.ms.kr': { name: '김지영', subject: '수학' },
+		'phr3635@snu-g.ms.kr': { name: '박혜리', subject: '영어' },
+		'popartry@snu-g.ms.kr': { name: '이경재', subject: '미술' },
+		'rapidwing@snu-g.ms.kr': { name: '이정무', subject: '수학' },
+		'rockjade@snu-g.ms.kr': { name: '김옥배', subject: '도덕' },
+		'rugger8kr@snu-g.ms.kr': { name: '이성운', subject: '체육' },
+		'squarelip@snu-g.ms.kr': { name: '김은희', subject: '과학' },
+		'terror14@snu-g.ms.kr': { name: '황경진', subject: '사회' },
+		'tgtec26@snu-g.ms.kr': { name: '최종훈', subject: '과학' },
+		'umbang55@snu-g.ms.kr': { name: '엄인우', subject: '체육' },
+		'urimal@snu-g.ms.kr': { name: '최인영', subject: '국어' },
+		'waniwh35@snu-g.ms.kr': { name: '강신완', subject: '영어' }
+	};
+
+	function getDisplayUserInfo(u: any) {
+		if (u.displayName) return u.displayName;
+		const meta = teacherMetadata[u.email];
+		if (meta) {
+			return meta.subject ? `${meta.name} (${meta.subject})` : meta.name;
+		}
+		return '미가입 사용자';
+	}
 
 	let usersList = $state<any[]>([]);
+
+	// Derived sorted users list: 1st by role (ADMIN > SUPERVISOR > STUDENT), 2nd by name
+	const rolePriority: Record<UserRole, number> = {
+		ADMIN: 1,
+		SUPERVISOR: 2,
+		STUDENT: 3
+	};
+
+	const sortedUsers = $derived(
+		[...usersList].sort((a, b) => {
+			// 1st Priority: Role
+			const roleDiff = (rolePriority[a.role as UserRole] || 99) - (rolePriority[b.role as UserRole] || 99);
+			if (roleDiff !== 0) return roleDiff;
+
+			// 2nd Priority: Name (using getDisplayUserInfo)
+			const nameA = getDisplayUserInfo(a);
+			const nameB = getDisplayUserInfo(b);
+			return nameA.localeCompare(nameB, 'ko');
+		})
+	);
+
 	let teacherRestrictions = $state<string[]>([]);
 	let loading = $state(true);
 	let saving = $state<string | null>(null);
@@ -42,21 +106,15 @@
 	async function fetchUsers() {
 		loading = true;
 		try {
-			// Fetch users
 			const q = query(collection(db, 'users'), orderBy('email', 'asc'));
 			const querySnapshot = await getDocs(q);
 			usersList = querySnapshot.docs.map((doc) => ({
 				id: doc.id,
 				...doc.data()
 			}));
-
-			// Subscribe to teacher restrictions
-			onSnapshot(collection(db, 'teacher_restrictions'), (snapshot) => {
-				teacherRestrictions = snapshot.docs.map((doc) => doc.id);
-			});
-		} catch (e) {
+		} catch (e: any) {
 			console.error('Users load error:', e);
-			message = { text: '사용자 목록을 불러오는 중 오류가 발생했습니다.', type: 'error' };
+			message = { text: '사용자 목록 로드 실패: ' + (e.message || '알 수 없는 오류'), type: 'error' };
 		} finally {
 			loading = false;
 		}
@@ -87,6 +145,15 @@
 
 	onMount(() => {
 		fetchUsers();
+
+		// Set up subscription once
+		const unsubscribe = onSnapshot(collection(db, 'teacher_restrictions'), (snapshot) => {
+			teacherRestrictions = snapshot.docs.map((doc) => doc.id);
+		}, (err) => {
+			console.error('Snapshot error:', err);
+		});
+
+		return unsubscribe;
 	});
 
 	async function addUsers() {
@@ -168,6 +235,26 @@
 			fetchUsers();
 		} finally {
 			saving = null;
+		}
+	}
+
+	async function deleteUser(email: string) {
+		if (email === 'tgtec26@snu-g.ms.kr') {
+			alert('시스템 관리자 계정은 삭제할 수 없습니다.');
+			return;
+		}
+
+		if (!confirm(`${email} 사용자를 화이트리스트에서 삭제하시겠습니까?\n삭제 후에는 해당 계정으로 로그인이 불가능합니다.`)) {
+			return;
+		}
+
+		try {
+			await deleteDoc(doc(db, 'users', email));
+			message = { text: `${email} 사용자가 삭제되었습니다.`, type: 'success' };
+			usersList = usersList.filter((u) => u.email !== email);
+		} catch (e: any) {
+			console.error('Delete error:', e);
+			message = { text: '사용자 삭제 중 오류가 발생했습니다: ' + e.message, type: 'error' };
 		}
 	}
 </script>
@@ -256,10 +343,11 @@
 									<th>현재 권한</th>
 									<th>권한 변경</th>
 									<th>참관 차단</th>
+									<th style="width: 50px;">관리</th>
 								</tr>
 							</thead>
 							<tbody>
-								{#each usersList as u}
+								{#each sortedUsers as u}
 									<tr class:is-admin={u.role === 'ADMIN'}>
 										<td>
 											<div class="user-info">
@@ -268,7 +356,7 @@
 													alt={u.displayName}
 													class="avatar"
 												/>
-												<span class="name">{u.displayName || '미가입 사용자'}</span>
+												<span class="name">{getDisplayUserInfo(u)}</span>
 											</div>
 										</td>
 										<td>
@@ -298,7 +386,8 @@
 										</td>
 										<td>
 											{#if u.role === 'SUPERVISOR'}
-												{@const restrictionKey = u.displayName || u.email}
+												{@const meta = teacherMetadata[u.email]}
+												{@const restrictionKey = u.displayName || (meta ? meta.name : u.email)}
 												<button
 													class="btn-toggle-block {teacherRestrictions.includes(restrictionKey)
 														? 'restricted'
@@ -314,6 +403,16 @@
 											{:else}
 												<span class="not-applicable">-</span>
 											{/if}
+										</td>
+										<td>
+											<button
+												class="btn-delete"
+												onclick={() => deleteUser(u.email)}
+												title="삭제"
+												disabled={u.email === 'tgtec26@snu-g.ms.kr'}
+											>
+												<Trash2 size={16} />
+											</button>
 										</td>
 									</tr>
 								{/each}
@@ -620,6 +719,30 @@
 
 	.btn-toggle-block.restricted:hover {
 		background: #fed7d7;
+	}
+
+	.btn-delete {
+		background: none;
+		border: 1px solid #e2e8f0;
+		color: #a0aec0;
+		padding: 0.4rem;
+		border-radius: 6px;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: all 0.2s;
+	}
+
+	.btn-delete:hover:not(:disabled) {
+		background-color: #fff5f5;
+		color: #e53e3e;
+		border-color: #feb2b2;
+	}
+
+	.btn-delete:disabled {
+		opacity: 0.3;
+		cursor: not-allowed;
 	}
 
 	.not-applicable {
