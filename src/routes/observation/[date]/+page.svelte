@@ -2,7 +2,7 @@
 	import { studentData } from '$lib/studentData';
 	import { teacherWebhooks } from '$lib/teacherWebhooks';
 	import { page } from '$app/state';
-	import { user, db, isStudent } from '$lib/firebase';
+	import { user, db, isStudent, isAdmin } from '$lib/firebase';
 	import { timetableData } from '$lib/timetableData';
 	import {
 		collection,
@@ -23,13 +23,14 @@
 		ChevronLeft,
 		ChevronRight,
 		BookOpen,
-		Lock
+		Lock,
+		AlertCircle
 	} from 'lucide-svelte';
 
 	const date = page.params.date ?? '';
 
 	// State for View Mode
-	let viewMode = $state<'grade' | 'teacher'>('grade');
+	let viewMode = $state<'grade' | 'teacher' | 'my'>('grade');
 	let selectedGrade = $state(1);
 	let selectedTeacher = $state<string | null>(null);
 
@@ -37,25 +38,20 @@
 	let restrictions = $state<string[]>([]);
 	let teacherRestrictions = $state<string[]>([]);
 	let loading = $state(true);
+	let currentWeekIndex = $state(0); // 0, 1, 2 for 3 weeks
 
 	const grades = [1, 2, 3];
 	const maxApplicants = 5;
 	const periods = ['1', '2', '3', '4', '5', '6', '7'];
 	const weekDays = ['월', '화', '수', '목', '금'];
 
-	// Calculate Week Dates (Mon-Fri) based on the current date
-	const weekDates = $derived.by(() => {
-		const current = new Date(date);
-		const day = current.getDay(); // 0: Sun, 1: Mon...
-		const diff = current.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
-		const monday = new Date(current.setDate(diff));
+	const allWeekDates = [
+		'2026-05-11', '2026-05-12', '2026-05-13', '2026-05-14', '2026-05-15',
+		'2026-05-18', '2026-05-19', '2026-05-20', '2026-05-21', '2026-05-22',
+		'2026-05-25', '2026-05-26', '2026-05-27', '2026-05-28', '2026-05-29'
+	];
 
-		return Array.from({ length: 5 }, (_, i) => {
-			const d = new Date(monday);
-			d.setDate(monday.getDate() + i);
-			return d.toISOString().split('T')[0];
-		});
-	});
+	const weekDates = $derived(allWeekDates.slice(currentWeekIndex * 5, (currentWeekIndex + 1) * 5));
 
 	// Subject Color Mapping
 	const subjectColors: Record<string, string> = {
@@ -162,8 +158,8 @@
 		// Fetch Applications
 		const qApps = query(
 			collection(db, 'observation_applications'),
-			where('date', '>=', weekDates[0]),
-			where('date', '<=', weekDates[4])
+			where('date', '>=', allWeekDates[0]),
+			where('date', '<=', allWeekDates[14])
 		);
 
 		unsubscribeApps = onSnapshot(qApps, (snapshot) => {
@@ -293,22 +289,26 @@
 		if ((day === 1 || day === 3 || day === 5) && period === '7') return true;
 		return false;
 	}
+
+	function getRepeatingSlot(classId: string, targetDate: string, period: string) {
+		const d = new Date(targetDate);
+		const day = d.getDay(); // 1 (Mon) to 5 (Fri)
+		// Map back to the first week (May 11-15)
+		const refDate = `2026-05-${10 + day}`;
+		return timetableData[classId]?.[refDate]?.[period];
+	}
 </script>
 
 <div class="full-width container">
-	<header class="page-header">
-		<div class="header-top">
-			<a href="/" class="back-link">
-				<ChevronLeft size={20} /> 뒤로가기
-			</a>
-			<div class="title-group">
-				<Calendar size={32} />
-				<h1>5월 {new Date(date).getDate()}일 ({weekDays[new Date(date).getDay() - 1]}) 시간표</h1>
-			</div>
+	{#if !$isStudent && !$isAdmin}
+		<div class="error-state card">
+			<AlertCircle size={48} color="#e63946" />
+			<h2>신청 권한이 없습니다</h2>
+			<p>지도 교사는 참관 신청을 할 수 없습니다. 지도 교사 전용 페이지를 이용해 주세요.</p>
+			<a href="/supervisor" class="btn btn-primary">지도 교사 페이지로 이동</a>
 		</div>
-	</header>
-
-	<nav class="main-nav">
+	{:else}
+		<nav class="main-nav">
 		<div class="grade-tabs">
 			{#each grades as g}
 				<button
@@ -328,10 +328,22 @@
 			class="nav-item teacher-tab {viewMode === 'teacher' ? 'active' : ''}"
 			onclick={() => {
 				viewMode = 'teacher';
+				selectedTeacher = null;
 				selectedGrade = 0;
 			}}
 		>
 			<BookOpen size={18} /> 교사별
+		</button>
+		<div class="divider"></div>
+		<button
+			class="nav-item my-tab {viewMode === 'my' ? 'active' : ''}"
+			onclick={() => {
+				viewMode = 'my';
+				selectedTeacher = null;
+				selectedGrade = 0;
+			}}
+		>
+			<User size={18} /> 내 일정
 		</button>
 	</nav>
 
@@ -356,16 +368,13 @@
 				</thead>
 				<tbody>
 					{#each periods as period}
-						{#if !(selectedGrade === 3 && period === '7')}
+						{#if !is7thPeriodRestricted(date, period)}
 							<tr>
-								<td
-									class="sticky-col period-cell {period === '7' ||
-									(new Date(date).getDay() % 2 === 1 && period === '6')
-										? 'last'
-										: ''}">{period}</td
-								>
+								<td class="sticky-col {period === '7' ? 'last' : ''}">
+									<div class="period-cell">{period}</div>
+								</td>
 								{#each getClassesForGrade(selectedGrade) as classId}
-									{@const slot = timetableData[classId][date]?.[period]}
+									{@const slot = getRepeatingSlot(classId, date, period)}
 									{@const apps = applications.filter(
 										(app) => app.date === date && app.classId === classId && app.period === period
 									)}
@@ -426,7 +435,7 @@
 													{#if apps.some((a) => a.status === 'APPROVED')}
 														<div class="applicant-list">
 															{#each apps.filter((a) => a.status === 'APPROVED') as app}
-																<span class="applicant-tag"
+																<span class="applicant-tag approved"
 																	>{app.applicantSubject
 																		? `[${app.applicantSubject}] `
 																		: ''}{app.applicantName}</span
@@ -450,9 +459,9 @@
 	{:else if viewMode === 'teacher' && !selectedTeacher}
 		<!-- Teacher List View -->
 		<div class="teacher-selection">
-			<div class="view-header">
+			<div class="view-header compact-header">
 				<h2>전체 지도 교사 목록</h2>
-				<p>시간표를 확인하려는 선생님을 선택하세요.</p>
+				<span class="header-notice">시간표를 확인하려는 선생님을 선택하세요.</span>
 			</div>
 			<div class="teacher-grid">
 				{#each teachers as teacher}
@@ -476,8 +485,35 @@
 			</button>
 			<div class="teacher-title">
 				<User size={24} />
-				<h2>{selectedTeacher} 선생님 주간 시간표</h2>
+				<h2>{selectedTeacher} 선생님</h2>
 			</div>
+		</div>
+
+		<div class="week-selector">
+			<button
+				class="week-nav-btn"
+				disabled={currentWeekIndex === 0}
+				onclick={() => currentWeekIndex--}
+			>
+				<ChevronLeft size={20} />
+			</button>
+			<div class="week-info">
+				<Calendar size={18} />
+				<span class="week-label">{currentWeekIndex + 1}주차</span>
+				<span class="week-dates"
+					>({weekDates[0].split('-').slice(1).join('/')} ~ {weekDates[4]
+						.split('-')
+						.slice(1)
+						.join('/')})</span
+				>
+			</div>
+			<button
+				class="week-nav-btn"
+				disabled={currentWeekIndex === 2}
+				onclick={() => currentWeekIndex++}
+			>
+				<ChevronRight size={20} />
+			</button>
 		</div>
 
 		<div class="timetable-wrapper">
@@ -493,12 +529,14 @@
 				<tbody>
 					{#each periods as period}
 						<tr>
-							<td class="sticky-col period-cell {period === '7' ? 'last' : ''}">{period}</td>
+							<td class="sticky-col {period === '7' ? 'last' : ''}">
+								<div class="period-cell">{period}</div>
+							</td>
 							{#each weekDates as d}
 								{@const classId = Object.keys(timetableData).find(
-									(id) => timetableData[id][d]?.[period]?.teacher === selectedTeacher
+									(id) => getRepeatingSlot(id, d, period)?.teacher === selectedTeacher
 								)}
-								{@const slot = classId ? timetableData[classId][d][period] : null}
+								{@const slot = classId ? getRepeatingSlot(classId, d, period) : null}
 								{@const apps = classId
 									? applications.filter(
 											(app) => app.date === d && app.classId === classId && app.period === period
@@ -567,7 +605,7 @@
 												{#if apps.some((a) => a.status === 'APPROVED')}
 													<div class="applicant-list">
 														{#each apps.filter((a) => a.status === 'APPROVED') as app}
-															<span class="applicant-tag"
+															<span class="applicant-tag approved"
 																>{app.applicantSubject
 																	? `[${app.applicantSubject}] `
 																	: ''}{app.applicantName}</span
@@ -589,7 +627,99 @@
 				</tbody>
 			</table>
 		</div>
+	{:else if viewMode === 'my'}
+		<!-- Student Personal Schedule View -->
+		<div class="view-header my-schedule-header">
+			<div class="title-with-notice">
+				<h2>내 참관 일정 (주간)</h2>
+				<span class="notice-text">승인된 참관 일정만 표시됩니다.</span>
+			</div>
+		</div>
+
+		<div class="week-selector">
+			<button
+				class="week-nav-btn"
+				disabled={currentWeekIndex === 0}
+				onclick={() => currentWeekIndex--}
+			>
+				<ChevronLeft size={20} />
+			</button>
+			<div class="week-info">
+				<Calendar size={18} />
+				<span class="week-label">{currentWeekIndex + 1}주차</span>
+				<span class="week-dates"
+					>({weekDates[0].split('-').slice(1).join('/')} ~ {weekDates[4]
+						.split('-')
+						.slice(1)
+						.join('/')})</span
+				>
+			</div>
+			<button
+				class="week-nav-btn"
+				disabled={currentWeekIndex === 2}
+				onclick={() => currentWeekIndex++}
+			>
+				<ChevronRight size={20} />
+			</button>
+		</div>
+
+		<div class="timetable-wrapper">
+			<table class="timetable weekly">
+				<thead>
+					<tr>
+						<th class="sticky-col period-header">교시</th>
+						{#each weekDays as day, i}
+							<th>{day} ({weekDates[i].split('-').slice(1).join('/')})</th>
+						{/each}
+					</tr>
+				</thead>
+				<tbody>
+					{#each periods as period}
+						<tr>
+							<td class="sticky-col {period === '7' ? 'last' : ''}">
+								<div class="period-cell">{period}</div>
+							</td>
+							{#each weekDates as d}
+								{@const myApp = applications.find(
+									(app) =>
+										app.applicantEmail === $user?.email &&
+										app.date === d &&
+										app.period === period &&
+										app.status === 'APPROVED'
+								)}
+								<td class="slot-cell {myApp ? 'active' : 'empty'}">
+									{#if myApp}
+										<div
+											class="slot-content card compact"
+											style="background-color: {getSubjectColor(myApp.subject)}33; border: 1px solid {getSubjectColor(myApp.subject)}80;"
+										>
+											<div class="status-badge approved absolute">확정</div>
+											<div class="slot-info single-row">
+												<span
+													class="subject"
+													style="background-color: {getSubjectColor(myApp.subject)}"
+													>{myApp.subject}</span
+												>
+												<span class="class-label"
+													>{myApp.classId.substring(0, 1)}-{parseInt(
+														myApp.classId.substring(2)
+													)}</span
+												>
+												<span class="teacher-name-small">{myApp.teacher}</span>
+											</div>
+										</div>
+									{:else}
+										<div class="no-class">-</div>
+									{/if}
+								</td>
+							{/each}
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
 	{/if}
+{/if}
 </div>
 
 <style>
@@ -640,10 +770,11 @@
 	.main-nav {
 		display: flex;
 		align-items: center;
+		justify-content: center;
 		background: #f8fafc;
 		padding: 0.5rem;
 		border-radius: 12px;
-		margin-bottom: 2rem;
+		margin-bottom: 1rem; /* Reduced from 2rem */
 		border: 1px solid #e2e8f0;
 	}
 
@@ -708,12 +839,12 @@
 	}
 
 	.timetable th {
-		background: #dbeafe;
+		background: #283151 !important; /* Unified Header BG */
 		padding: 0.6rem;
-		font-weight: 800;
-		color: #1e3a8a;
+		font-weight: 900;
+		color: #ffffff; /* White text */
 		font-size: 0.95rem;
-		border: 1px solid #bfdbfe;
+		border: 1px solid rgba(255, 255, 255, 0.1);
 	}
 
 	.corner-tl {
@@ -726,22 +857,34 @@
 	.sticky-col {
 		position: sticky;
 		left: 0;
-		background: #f8fafc !important;
-		z-index: 2;
-		border-right: 2px solid #cbd5e0 !important;
-		width: 60px !important;
+		background: #283151 !important; /* Unified Header BG */
+		z-index: 5;
+		border-right: 2px solid #0f172a !important;
+		width: 40px !important;
+		min-width: 40px !important;
+		max-width: 40px !important;
+		padding: 0 !important;
+		vertical-align: middle !important;
 	}
 
 	.period-header {
 		border-top-left-radius: 10px;
+		width: 40px !important;
+		min-width: 40px !important;
+		max-width: 40px !important;
+		background: #283151 !important;
 	}
 	.period-cell {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		text-align: center;
 		font-weight: 900;
-		color: #1e40af;
+		color: #ffffff; /* White text */
 		font-size: 1.1rem;
-		border: 1px solid #e2e8f0;
-		border-top: none;
+		height: 100%;
+		width: 100%;
+		background: #283151; /* Fill the background explicitly */
 	}
 
 	.period-cell.last {
@@ -879,6 +1022,74 @@
 		padding: 0.05rem 0.3rem;
 		border-radius: 4px;
 		white-space: nowrap;
+		border: 1px solid transparent;
+	}
+	.applicant-tag.approved {
+		background-color: #f0fdf4;
+		color: #166534;
+		border-color: #bbf7d0;
+	}
+
+	.my-schedule-header {
+		margin-bottom: 1rem !important;
+	}
+	.title-with-notice {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+	.title-with-notice h2 {
+		margin: 0;
+	}
+	.notice-text {
+		font-size: 0.9rem;
+		color: #64748b;
+		font-weight: 700;
+	}
+
+	.slot-info.single-row {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		width: 100%;
+		overflow: hidden;
+	}
+	.teacher-name-small {
+		font-size: 0.75rem;
+		color: #475569;
+		font-weight: 700;
+		white-space: nowrap;
+	}
+	.status-badge {
+		font-size: 0.6rem;
+		font-weight: 900;
+		padding: 0.05rem 0.3rem;
+		border-radius: 3px;
+		width: fit-content;
+	}
+	.status-badge.absolute {
+		position: absolute;
+		top: 0.3rem;
+		right: 0.3rem;
+	}
+	.status-badge.approved {
+		background: #f0fdf4;
+		color: #16a34a;
+		border: 1px solid #bbf7d0;
+	}
+
+	.slot-content.card {
+		position: relative;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		padding: 0.4rem;
+		border-radius: 8px;
+		background: white;
+	}
+	.slot-content.card.compact {
+		padding: 0.3rem 0.4rem;
 	}
 
 	.no-class {
@@ -895,24 +1106,49 @@
 		font-size: 0.8rem;
 	}
 
+	.timetable td {
+		height: 70px; /* Reduced from 80px or higher */
+		border: 1px solid #edf2f7;
+	}
+
 	/* Teacher Selection Styles */
 	.teacher-selection {
-		padding: 1rem;
+		padding: 0 1rem 1rem 1rem;
+		margin-top: -0.5rem;
+	}
+
+	.compact-header {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		margin-bottom: 1.5rem;
+		gap: 1rem;
+	}
+
+	.compact-header h2 {
+		margin: 0;
+		font-size: 1.5rem;
+	}
+
+	.header-notice {
+		font-size: 0.9rem;
+		color: #64748b;
+		font-weight: 700;
 	}
 
 	.teacher-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-		gap: 1rem;
-		margin-top: 2rem;
+		gap: 0.35rem;
+		margin-top: 0.7rem;
 	}
 
 	.teacher-card {
-		padding: 1.5rem 1rem;
+		padding: 0.5rem 1rem;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1rem;
+		gap: 0.35rem;
 		transition: all 0.2s;
 		background: white;
 		cursor: pointer;
@@ -978,6 +1214,62 @@
 		color: #666;
 	}
 
+	/* Week Selector Styling */
+	.week-selector {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 2rem;
+		padding: 0.8rem;
+		background: #f8fafc;
+		border-radius: 12px;
+		margin-bottom: 1rem;
+		border: 1px solid #e2e8f0;
+	}
+
+	.week-info {
+		display: flex;
+		align-items: center;
+		gap: 0.8rem;
+		color: var(--header-bg);
+	}
+
+	.week-label {
+		font-weight: 900;
+		font-size: 1.1rem;
+	}
+
+	.week-dates {
+		font-size: 0.9rem;
+		color: #64748b;
+		font-weight: 700;
+	}
+
+	.week-nav-btn {
+		background: white;
+		border: 1px solid #e2e8f0;
+		color: #64748b;
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.week-nav-btn:hover:not(:disabled) {
+		background: var(--header-bg);
+		color: white;
+		border-color: var(--header-bg);
+	}
+
+	.week-nav-btn:disabled {
+		opacity: 0.3;
+		cursor: not-allowed;
+	}
+
 	.spin {
 		animation: spin 1s linear infinite;
 		margin-bottom: 1rem;
@@ -998,5 +1290,14 @@
 		.timetable td {
 			width: 140px;
 		}
+	}
+
+	.error-state {
+		text-align: center;
+		padding: 5rem 2rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
 	}
 </style>

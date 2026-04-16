@@ -37,7 +37,6 @@ body {
 	background-color: var(--header-bg);
 	color: white;
 	padding: 2rem 1.5rem;
-	border-bottom: 5px solid var(--accent-green);
 }
 
 .header-inner {

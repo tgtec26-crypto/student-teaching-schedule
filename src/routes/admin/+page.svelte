@@ -297,14 +297,15 @@
 											{/if}
 										</td>
 										<td>
-											{#if u.role === 'SUPERVISOR' && u.displayName}
+											{#if u.role === 'SUPERVISOR'}
+												{@const restrictionKey = u.displayName || u.email}
 												<button
-													class="btn-toggle-block {teacherRestrictions.includes(u.displayName)
+													class="btn-toggle-block {teacherRestrictions.includes(restrictionKey)
 														? 'restricted'
 														: ''}"
-													onclick={() => toggleTeacherRestriction(u.displayName)}
+													onclick={() => toggleTeacherRestriction(restrictionKey)}
 												>
-													{#if teacherRestrictions.includes(u.displayName)}
+													{#if teacherRestrictions.includes(restrictionKey)}
 														<Lock size={14} /> 차단됨
 													{:else}
 														<Unlock size={14} /> 허용됨

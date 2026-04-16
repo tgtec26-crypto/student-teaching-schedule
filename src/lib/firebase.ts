@@ -73,17 +73,24 @@ async function syncUser(u: any): Promise<UserRole> {
 		return role;
 	} else {
 		// Existing user: update last login and profile info
+		let role = docSnap.data().role;
+		
+		// Force ADMIN role for the primary admin email
+		if (u.email === 'tgtec26@snu-g.ms.kr') {
+			role = 'ADMIN';
+		}
+
 		await setDoc(
 			userRef,
 			{
 				displayName: u.displayName,
 				photoURL: u.photoURL,
+				role: role, // Ensure role is updated/maintained
 				lastLogin: serverTimestamp()
 			},
 			{ merge: true }
 		);
 
-		const role = docSnap.data().role;
 		// Migration from old 'USER' role if necessary
 		if (role === 'USER') return 'STUDENT';
 		return role as UserRole;

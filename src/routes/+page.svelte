@@ -12,20 +12,36 @@
 	} from 'lucide-svelte';
 	import { doc, getDoc } from 'firebase/firestore';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 
 	const observationDates = [
 		{ date: '2026-05-11', label: '5월 11일(월)' },
 		{ date: '2026-05-12', label: '5월 12일(화)' },
 		{ date: '2026-05-13', label: '5월 13일(수)' },
 		{ date: '2026-05-14', label: '5월 14일(목)' },
-		{ date: '2026-05-15', label: '5월 15일(금)' }
+		{ date: '2026-05-15', label: '5월 15일(금)' },
+		{ date: '2026-05-18', label: '5월 18일(월)' },
+		{ date: '2026-05-19', label: '5월 19일(화)' },
+		{ date: '2026-05-20', label: '5월 20일(수)' },
+		{ date: '2026-05-21', label: '5월 21일(목)' },
+		{ date: '2026-05-22', label: '5월 22일(금)' },
+		{ date: '2026-05-25', label: '5월 25일(월)' },
+		{ date: '2026-05-26', label: '5월 26일(화)' },
+		{ date: '2026-05-27', label: '5월 27일(수)' },
+		{ date: '2026-05-28', label: '5월 28일(목)' },
+		{ date: '2026-05-29', label: '5월 29일(금)' }
 	];
 
 	let checking = $state(true);
 
 	$effect(() => {
 		if ($user && $userRole !== null) {
-			checking = false;
+			// If pure supervisor (not admin), redirect immediately and DON'T show the page content
+			if ($isSupervisor && !$isAdmin) {
+				goto('/supervisor');
+			} else {
+				checking = false;
+			}
 		} else if (!$user) {
 			checking = false;
 		}
@@ -68,32 +84,36 @@
 					{/if}
 				</div>
 			</div>
-			<div class="info-badges">
-				<span class="badge">
-					<Calendar size={16} />
-					참관 기간: 5월 11일 ~ 5월 15일
-				</span>
-				<span class="badge alert">
-					<Info size={16} />
-					시간당 최대 5명 신청 가능
-				</span>
-			</div>
+			{#if !$isSupervisor || $isAdmin}
+				<div class="info-badges">
+					<span class="badge">
+						<Calendar size={16} />
+						참관 기간: 5월 11일 ~ 5월 29일
+					</span>
+					<span class="badge alert">
+						<Info size={16} />
+						시간당 최대 5명 신청 가능
+					</span>
+				</div>
+			{/if}
 		</section>
 
-		<div class="date-grid">
-			{#each observationDates as item}
-				<a href="/observation/{item.date}" class="date-card card">
-					<div class="date-header">
-						<Calendar size={24} />
-						<span class="date-label">{item.label}</span>
-					</div>
-					<div class="date-footer">
-						<span>참관 신청하기</span>
-						<ArrowRight size={20} />
-					</div>
-				</a>
-			{/each}
-		</div>
+		{#if !$isSupervisor || $isAdmin}
+			<div class="date-grid">
+				{#each observationDates as item}
+					<a href="/observation/{item.date}" class="date-card card">
+						<div class="date-header">
+							<Calendar size={24} />
+							<span class="date-label">{item.label}</span>
+						</div>
+						<div class="date-footer">
+							<span>참관 신청하기</span>
+							<ArrowRight size={20} />
+						</div>
+					</a>
+				{/each}
+			</div>
+		{/if}
 	{/if}
 </div>
 
@@ -206,8 +226,8 @@
 	.date-grid {
 		display: grid;
 		grid-template-columns: repeat(5, 1fr);
-		gap: 1rem;
-		margin-top: 1.5rem;
+		gap: 0.6rem;
+		margin-top: 1rem;
 	}
 
 	.date-card {
@@ -215,33 +235,36 @@
 		color: inherit;
 		display: flex;
 		flex-direction: column;
-		justify-content: space-between;
-		min-height: 140px;
-		padding: 1.2rem !important;
+		justify-content: center;
+		min-height: auto;
+		height: 80px;
+		padding: 0.6rem 0.8rem !important;
 		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 		border: 1px solid #eee;
-		background-color: #fafaf5 !important; /* 미색 배경 */
+		background-color: #fafaf5 !important;
+		border-radius: 8px;
 	}
 
 	.date-card:hover {
-		transform: translateY(-5px);
+		transform: translateY(-2px);
 		border-color: var(--accent-green);
-		background-color: #ffffff !important; /* 호버 시 흰색으로 강조 */
-		box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+		background-color: #ffffff !important;
+		box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
 	}
 
 	.date-header {
 		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 0.8rem;
+		flex-direction: row;
+		align-items: center;
+		gap: 0.6rem;
 		color: var(--header-bg);
 	}
 
 	.date-label {
-		font-size: 1.25rem;
+		font-size: 1rem;
 		font-weight: 800;
 		word-break: keep-all;
+		letter-spacing: -0.02em;
 	}
 
 	.date-footer {
@@ -249,10 +272,11 @@
 		align-items: center;
 		justify-content: space-between;
 		font-weight: 700;
-		font-size: 0.85rem;
+		font-size: 0.7rem;
 		color: var(--text-muted);
-		padding-top: 0.8rem;
-		border-top: 1px solid #eee;
+		padding-top: 0.4rem;
+		margin-top: 0.4rem;
+		border-top: 1px solid #f1f1f1;
 	}
 
 	.date-card:hover .date-footer {
@@ -261,7 +285,13 @@
 
 	@media (max-width: 1100px) {
 		.date-grid {
-			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+
+	@media (max-width: 600px) {
+		.date-grid {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>
