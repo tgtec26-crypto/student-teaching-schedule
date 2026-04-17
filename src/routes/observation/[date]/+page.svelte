@@ -9,6 +9,7 @@
 		query,
 		where,
 		onSnapshot,
+		getDoc,
 		addDoc,
 		deleteDoc,
 		doc,
@@ -194,18 +195,22 @@
 		applicantSubject: string,
 		targetDate: string,
 		period: string,
-		subject: string
+		subject: string,
+		isAutoApproved: boolean = false
 	) {
 		const webhookUrl = teacherWebhooks[teacherName];
 		if (!webhookUrl) return;
 
 		const message = {
 			text:
-				`🔔 *새로운 참관 신청 알림*\n\n` +
+				`🔔 *새로운 참관 신청 알림${isAutoApproved ? ' (자동 승인됨)' : ''}*\n\n` +
 				`* 신청자: [${applicantSubject}] ${applicantName}\n` +
 				`* 일시: ${targetDate} ${period}교시\n` +
-				`* 과목: ${subject}\n\n` +
-				`아래 링크에서 신청을 확인하고 승인해 주세요.\n` +
+				`* 과목: ${subject}\n` +
+				`* 상태: ${isAutoApproved ? '✅ 자동 승인 완료' : '⏳ 승인 대기 중'}\n\n` +
+				(isAutoApproved 
+					? `교사님의 설정에 따라 자동으로 승인되었습니다. 상세 내용은 아래 링크에서 확인하세요.`
+					: `아래 링크에서 신청을 확인하고 승인해 주세요.`) + `\n` +
 				`🔗 [지도 교사 승인 페이지 바로가기](https://student-teaching-schedule.vercel.app/supervisor)`
 		};
 
@@ -261,6 +266,11 @@
 				const aName = sInfo ? sInfo.name : $user.displayName;
 				const aSubject = sInfo ? sInfo.subject : '미정';
 
+				// 지도 교사의 자동 승인 설정 확인
+				const teacherSettingsRef = doc(db, 'teacher_settings', teacher);
+				const settingsSnap = await getDoc(teacherSettingsRef);
+				const isAutoApprove = settingsSnap.exists() ? settingsSnap.data().autoApprove : false;
+
 				await addDoc(collection(db, 'observation_applications'), {
 					date: targetDate,
 					classId,
@@ -270,12 +280,12 @@
 					applicantEmail: $user.email,
 					applicantName: aName,
 					applicantSubject: aSubject,
-					status: 'PENDING',
+					status: isAutoApprove ? 'APPROVED' : 'PENDING',
 					timestamp: Timestamp.now()
 				});
 
-				// 웹훅 알림 전송
-				await sendWebhookNotification(teacher, aName, aSubject, targetDate, period, subject);
+				// 웹훅 알림 전송 (자동 승인 여부 포함)
+				await sendWebhookNotification(teacher, aName, aSubject, targetDate, period, subject, isAutoApprove);
 			}
 		}
 	}
