@@ -1,8 +1,8 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
-	import { user, login, logout } from '$lib/firebase';
-	import { LogIn, LogOut, User as UserIcon, ArrowLeft } from 'lucide-svelte';
+	import { user, login, logout, isAdmin, isSupervisor } from '$lib/firebase';
+	import { LogIn, LogOut, User as UserIcon, ArrowLeft, ShieldCheck, UserCheck } from 'lucide-svelte';
 
 	let { children } = $props();
 
@@ -21,6 +21,22 @@
 
 <header class="header-container">
 	<div class="header-inner">
+		<!-- Top-left: Admin/Supervisor buttons -->
+		<div class="top-left-actions">
+			{#if $user}
+				{#if $isAdmin}
+					<a href="/admin" class="top-btn admin">
+						<ShieldCheck size={14} /> 관리자
+					</a>
+				{/if}
+				{#if $isSupervisor || $isAdmin}
+					<a href="/supervisor" class="top-btn supervisor">
+						<UserCheck size={14} /> 지도교사
+					</a>
+				{/if}
+			{/if}
+		</div>
+
 		<div class="header-content-main">
 			<a href="/" class="header-link">
 				<h1 class="header-title"><span class="accent">SNUG</span> 교육실습 참관 신청</h1>
@@ -35,7 +51,7 @@
 					<span class="header-date-title">{formattedDate} 시간표</span>
 				</div>
 			{:else}
-				<p class="header-desc">서울대학교사범대학부설여자중학교</p>
+				<p class="header-desc">서울사대부여중 교육실습 시스템</p>
 			{/if}
 		</div>
 
@@ -68,11 +84,11 @@
 	.header-container {
 		background-color: var(--header-bg);
 		color: white;
-		padding: 2.5rem 1.5rem;
+		padding: 2.5rem 1.5rem 1.5rem 1.5rem;
 	}
 
 	.header-inner {
-		max-width: 1200px;
+		max-width: 1300px;
 		margin: 0 auto;
 		display: flex;
 		align-items: center;
@@ -80,6 +96,36 @@
 		position: relative;
 		gap: 3rem;
 	}
+
+	.top-left-actions {
+		position: absolute;
+		left: 0;
+		top: -1rem;
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.top-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.25rem 0.7rem;
+		border-radius: 50px;
+		font-size: 0.75rem;
+		font-weight: 800;
+		text-decoration: none;
+		color: white;
+		background: rgba(255, 255, 255, 0.1);
+		border: 1px solid rgba(255, 255, 255, 0.2);
+		transition: all 0.2s;
+	}
+
+	.top-btn:hover {
+		background: rgba(255, 255, 255, 0.2);
+	}
+
+	.top-btn.admin { border-color: #94a3b8; }
+	.top-btn.supervisor { border-color: #f59e0b; color: #fbbf24; }
 
 	.header-content-main {
 		display: flex;
@@ -216,6 +262,10 @@
 		.auth-box {
 			position: static;
 			margin-top: 1rem;
+		}
+		.top-left-actions {
+			position: static;
+			margin-bottom: 0.5rem;
 		}
 	}
 </style>

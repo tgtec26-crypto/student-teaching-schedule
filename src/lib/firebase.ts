@@ -1,16 +1,12 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, getDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import {
-	getAuth,
-	GoogleAuthProvider,
-	signInWithPopup,
-	signOut,
-	onAuthStateChanged
-} from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
+import { teacherMetadata, getStandardizedName } from './teacherData';
 
 const firebaseConfig = {
+// ... (omitted config for brevity in this thought, will provide full replacement)
 	apiKey: 'AIzaSyAWk9OxdEFTtQ3pvErnkSEki65BMHFD46k',
 	authDomain: 'testprojecttgtec.firebaseapp.com',
 	projectId: 'testprojecttgtec',
@@ -58,13 +54,15 @@ async function syncUser(u: any): Promise<UserRole> {
 	const userRef = doc(db, 'users', u.email);
 	const docSnap = await getDoc(userRef);
 
+	const standardizedName = getStandardizedName(u.email, u.displayName);
+
 	if (!docSnap.exists()) {
 		// New user: set default role
 		// Special case for the primary admin
 		const role: UserRole = u.email === 'tgtec26@snu-g.ms.kr' ? 'ADMIN' : 'STUDENT';
 		await setDoc(userRef, {
 			email: u.email,
-			displayName: u.displayName,
+			displayName: standardizedName,
 			photoURL: u.photoURL,
 			role: role,
 			createdAt: serverTimestamp(),
@@ -83,7 +81,7 @@ async function syncUser(u: any): Promise<UserRole> {
 		await setDoc(
 			userRef,
 			{
-				displayName: u.displayName,
+				displayName: standardizedName,
 				photoURL: u.photoURL,
 				role: role, // Ensure role is updated/maintained
 				lastLogin: serverTimestamp()
@@ -99,12 +97,30 @@ async function syncUser(u: any): Promise<UserRole> {
 
 // Observe Auth State
 onAuthStateChanged(auth, async (u) => {
-	user.set(u);
 	if (u) {
 		const role = await syncUser(u);
 		userRole.set(role);
 		setRoleCookie(role);
+
+		// Fetch latest profile from Firestore to ensure standardized name is used
+		// Note: We use email as the document ID in 'users' collection
+		const userRef = doc(db, 'users', u.email!);
+		const userSnap = await getDoc(userRef);
+		
+		if (userSnap.exists()) {
+			const userData = userSnap.data();
+			// Create a merged user object with standardized displayName
+			const mergedUser = {
+				...u,
+				displayName: userData.displayName || u.displayName,
+				photoURL: userData.photoURL || u.photoURL
+			};
+			user.set(mergedUser);
+		} else {
+			user.set(u);
+		}
 	} else {
+		user.set(null);
 		userRole.set(null);
 		setRoleCookie(null);
 	}

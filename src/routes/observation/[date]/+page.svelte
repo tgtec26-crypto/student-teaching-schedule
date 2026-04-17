@@ -25,21 +25,25 @@
 		ChevronRight,
 		BookOpen,
 		Lock,
-		AlertCircle
+		AlertCircle,
+		ArrowLeft
 	} from 'lucide-svelte';
 
-	const date = page.params.date ?? '';
+	// URL Params & Query
+	let date = $state(page.params.date ?? '');
+	const queryView = page.url.searchParams.get('view');
+	const queryGrade = page.url.searchParams.get('grade');
+	const queryTeacher = page.url.searchParams.get('teacher');
 
 	// State for View Mode
-	let viewMode = $state<'grade' | 'teacher' | 'my'>('teacher');
-	let selectedGrade = $state(1);
-	let selectedTeacher = $state<string | null>(null);
+	let viewMode = $state<'grade' | 'teacher' | 'my'>( (queryView as any) || 'teacher');
+	let selectedGrade = $state(queryGrade ? parseInt(queryGrade) : 1);
+	let selectedTeacher = $state<string | null>(queryTeacher || null);
 
 	let applications = $state<any[]>([]);
 	let restrictions = $state<string[]>([]);
 	let teacherRestrictions = $state<string[]>([]);
 	let loading = $state(true);
-	let currentWeekIndex = $state(0); // 0, 1, 2 for 3 weeks
 
 	const grades = [1, 2, 3];
 	const maxApplicants = 5;
@@ -47,68 +51,88 @@
 	const weekDays = ['월', '화', '수', '목', '금'];
 
 	const allWeekDates = [
+		'2026-05-04', '2026-05-05', '2026-05-06', '2026-05-07', '2026-05-08',
 		'2026-05-11', '2026-05-12', '2026-05-13', '2026-05-14', '2026-05-15',
 		'2026-05-18', '2026-05-19', '2026-05-20', '2026-05-21', '2026-05-22',
 		'2026-05-25', '2026-05-26', '2026-05-27', '2026-05-28', '2026-05-29'
 	];
 
+	// Navigation State
+	let currentWeekIndex = $state(0); 
+
+	// Sync currentWeekIndex with current date
+	$effect(() => {
+		const idx = allWeekDates.indexOf(date);
+		if (idx !== -1) {
+			currentWeekIndex = Math.floor(idx / 5);
+		}
+	});
+
 	const weekDates = $derived(allWeekDates.slice(currentWeekIndex * 5, (currentWeekIndex + 1) * 5));
+
+	// Navigation Logic with URL Sync
+	function updateURL(newDate: string) {
+		date = newDate;
+		const url = new URL(page.url);
+		url.pathname = `/observation/${newDate}`;
+		// Use history.replaceState to avoid polluting browser history while switching dates
+		history.replaceState({}, '', url.toString());
+	}
+
+	function nextWeek() {
+		if (currentWeekIndex < 3) {
+			currentWeekIndex++;
+			updateURL(allWeekDates[currentWeekIndex * 5]); // Reset to Monday
+		}
+	}
+
+	function prevWeek() {
+		if (currentWeekIndex > 0) {
+			currentWeekIndex--;
+			updateURL(allWeekDates[currentWeekIndex * 5]); // Reset to Monday
+		}
+	}
+
+	function nextDate() {
+		const idx = allWeekDates.indexOf(date);
+		const weekStart = currentWeekIndex * 5;
+		const weekEnd = weekStart + 4;
+		
+		if (idx === weekEnd) {
+			updateURL(allWeekDates[weekStart]); // Cycle to Monday
+		} else {
+			updateURL(allWeekDates[idx + 1]);
+		}
+	}
+
+	function prevDate() {
+		const idx = allWeekDates.indexOf(date);
+		const weekStart = currentWeekIndex * 5;
+		const weekEnd = weekStart + 4;
+
+		if (idx === weekStart) {
+			updateURL(allWeekDates[weekEnd]); // Cycle to Friday
+		} else {
+			updateURL(allWeekDates[idx - 1]);
+		}
+	}
+
+	function formatDateShort(dStr: string) {
+		const parts = dStr.split('-');
+		const d = new Date(dStr);
+		const dayName = weekDays[d.getDay() - 1] || '';
+		return `${parseInt(parts[1])}.${parseInt(parts[2])}.(${dayName})`;
+	}
 
 	// Subject Color Mapping
 	const subjectColors: Record<string, string> = {
-		국어: '#fecaca',
-		한문: '#fecaca',
-		수학: '#bbf7d0',
-		도덕: '#e9d5ff',
-		사회: '#e9d5ff',
-		역사: '#e9d5ff',
-		과학: '#fef08a',
-		물리: '#fef08a',
-		화학: '#fef08a',
-		생명: '#fef08a',
-		지구: '#fef08a',
-		영어: '#bfdbfe',
-		기가: '#e2e8f0',
-		기술: '#e2e8f0',
-		가정: '#e2e8f0',
-		체육: '#fed7aa',
-		음악: '#bae6fd',
-		미술: '#fbcfe8',
-		진로: '#f3e8ff',
-		정보: '#a7f3d0',
+		국어: '#fecaca', 한문: '#fecaca', 수학: '#bbf7d0', 도덕: '#e9d5ff',
+		사회: '#e9d5ff', 역사: '#e9d5ff', 과학: '#fef08a', 물리: '#fef08a',
+		화학: '#fef08a', 생명: '#fef08a', 지구: '#fef08a', 영어: '#bfdbfe',
+		기가: '#e2e8f0', 기술: '#e2e8f0', 가정: '#e2e8f0', 체육: '#fed7aa',
+		음악: '#bae6fd', 미술: '#fbcfe8', 진로: '#f3e8ff', 정보: '#a7f3d0',
 		스포츠: '#cffafe'
 	};
-
-	const subjectOrder = [
-		'국어',
-		'한문',
-		'수학',
-		'도덕',
-		'사회',
-		'역사',
-		'물리',
-		'화학',
-		'생명',
-		'지구',
-		'과학',
-		'영어',
-		'기가',
-		'기술',
-		'가정',
-		'체육',
-		'음악',
-		'미술',
-		'진로',
-		'정보',
-		'스포츠',
-		'주제',
-		'동아리'
-	];
-
-	function getSubjectIndex(subject: string) {
-		const index = subjectOrder.indexOf(subject);
-		return index === -1 ? 999 : index;
-	}
 
 	function getSubjectColor(subject: string) {
 		if (!subject) return '#f3f4f6';
@@ -116,7 +140,17 @@
 		return subjectColors[base] || '#f3f4f6';
 	}
 
-	// Extract unique teachers and their subjects (Grouping by main subject)
+	const subjectOrder = [
+		'국어', '한문', '수학', '도덕', '사회', '역사', '물리', '화학', '생명', '지구',
+		'과학', '영어', '기가', '기술', '가정', '체육', '음악', '미술', '진로', '정보',
+		'스포츠', '주제', '동아리'
+	];
+
+	function getSubjectIndex(subject: string) {
+		const index = subjectOrder.indexOf(subject);
+		return index === -1 ? 999 : index;
+	}
+
 	const teacherToSubject = $derived.by(() => {
 		const subjectsList: Record<string, Set<string>> = {};
 		Object.values(timetableData).forEach((classes) => {
@@ -124,7 +158,6 @@
 				Object.values(days).forEach((slot: any) => {
 					if (slot.teacher) {
 						if (!subjectsList[slot.teacher]) subjectsList[slot.teacher] = new Set();
-						// 숫자와 알파벳 제거하여 과목명 통일 (예: 국어A -> 국어)
 						subjectsList[slot.teacher].add(slot.subject.replace(/[A-Z0-9]/g, ''));
 					}
 				});
@@ -145,103 +178,53 @@
 			const subjectB = teacherToSubject[b];
 			const indexA = getSubjectIndex(subjectA);
 			const indexB = getSubjectIndex(subjectB);
-
 			if (indexA !== indexB) return indexA - indexB;
 			return a.localeCompare(b);
 		})
 	);
 
-	// Firestore Listener (Fetch all apps and restrictions for the current week)
+	// Firestore Listeners
 	let unsubscribeApps: () => void;
 	let unsubscribeRestricted: () => void;
+	let unsubscribeGlobal: () => void;
 
 	$effect(() => {
-		// Fetch Applications
 		const qApps = query(
 			collection(db, 'observation_applications'),
 			where('date', '>=', allWeekDates[0]),
-			where('date', '<=', allWeekDates[14])
+			where('date', '<=', allWeekDates[19])
 		);
 
 		unsubscribeApps = onSnapshot(qApps, (snapshot) => {
-			applications = snapshot.docs.map((doc) => ({
-				id: doc.id,
-				...doc.data()
-			}));
+			applications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 			loading = false;
 		});
 
-		// Fetch All Restrictions
-		const qRestricted = query(collection(db, 'restricted_lessons'));
-		unsubscribeRestricted = onSnapshot(qRestricted, (snapshot) => {
+		unsubscribeRestricted = onSnapshot(query(collection(db, 'restricted_lessons')), (snapshot) => {
 			restrictions = snapshot.docs.map((doc) => doc.id);
 		});
 
-		// Fetch Global Teacher Restrictions
-		onSnapshot(collection(db, 'teacher_restrictions'), (snapshot) => {
+		unsubscribeGlobal = onSnapshot(collection(db, 'teacher_restrictions'), (snapshot) => {
 			teacherRestrictions = snapshot.docs.map((doc) => doc.id);
 		});
 
 		return () => {
 			if (unsubscribeApps) unsubscribeApps();
 			if (unsubscribeRestricted) unsubscribeRestricted();
+			if (unsubscribeGlobal) unsubscribeGlobal();
 		};
 	});
 
-	// Webhook Notification
-	async function sendWebhookNotification(
-		teacherName: string,
-		applicantName: string,
-		applicantSubject: string,
-		targetDate: string,
-		period: string,
-		subject: string,
-		isAutoApproved: boolean = false
-	) {
-		const webhookUrl = teacherWebhooks[teacherName];
-		if (!webhookUrl) return;
-
-		const message = {
-			text:
-				`🔔 *새로운 참관 신청 알림${isAutoApproved ? ' (자동 승인됨)' : ''}*\n\n` +
-				`* 신청자: [${applicantSubject}] ${applicantName}\n` +
-				`* 일시: ${targetDate} ${period}교시\n` +
-				`* 과목: ${subject}\n` +
-				`* 상태: ${isAutoApproved ? '✅ 자동 승인 완료' : '⏳ 승인 대기 중'}\n\n` +
-				(isAutoApproved 
-					? `교사님의 설정에 따라 자동으로 승인되었습니다. 상세 내용은 아래 링크에서 확인하세요.`
-					: `아래 링크에서 신청을 확인하고 승인해 주세요.`) + `\n` +
-				`🔗 [지도 교사 승인 페이지 바로가기](https://student-teaching-schedule.vercel.app/supervisor)`
-		};
-
-		try {
-			await fetch(webhookUrl, {
-				method: 'POST',
-				mode: 'no-cors',
-				headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-				body: JSON.stringify(message)
-			});
-		} catch (error) {
-			console.error('Webhook notification error:', error);
-		}
+	function isDateDisabled(targetDate: string) {
+		return targetDate === '2026-05-04' || targetDate === '2026-05-05';
 	}
 
-	// Toggle Application Logic
-	async function toggleApplication(
-		targetDate: string,
-		classId: string,
-		period: string,
-		subject: string,
-		teacher: string
-	) {
+	async function toggleApplication(targetDate: string, classId: string, period: string, subject: string, teacher: string) {
 		if (!$user) return alert('로그인이 필요합니다.');
+		if (isDateDisabled(targetDate)) return alert('해당 날짜는 참관 신청이 불가능한 날입니다.');
 
 		const existingApp = applications.find(
-			(app) =>
-				app.applicantEmail === $user.email &&
-				app.date === targetDate &&
-				app.classId === classId &&
-				app.period === period
+			(app) => app.applicantEmail === $user.email && app.date === targetDate && app.classId === classId && app.period === period
 		);
 
 		if (existingApp) {
@@ -249,16 +232,12 @@
 				await deleteDoc(doc(db, 'observation_applications', existingApp.id));
 			}
 		} else {
-			const slotApps = applications.filter(
-				(app) => app.date === targetDate && app.classId === classId && app.period === period
-			);
-
 			const hasDuplicate = applications.some(
-				(app) =>
-					app.applicantEmail === $user.email && app.date === targetDate && app.period === period
+				(app) => app.applicantEmail === $user.email && app.date === targetDate && app.period === period
 			);
-
 			if (hasDuplicate) return alert('해당 교시에 이미 다른 수업을 신청하셨습니다.');
+			
+			const slotApps = applications.filter((app) => app.date === targetDate && app.classId === classId && app.period === period);
 			if (slotApps.length >= maxApplicants) return alert('정원이 초과되었습니다.');
 
 			if (confirm(`${targetDate} ${period}교시 (${subject}) 수업 참관을 신청하시겠습니까?`)) {
@@ -266,26 +245,25 @@
 				const aName = sInfo ? sInfo.name : $user.displayName;
 				const aSubject = sInfo ? sInfo.subject : '미정';
 
-				// 지도 교사의 자동 승인 설정 확인
-				const teacherSettingsRef = doc(db, 'teacher_settings', teacher);
-				const settingsSnap = await getDoc(teacherSettingsRef);
-				const isAutoApprove = settingsSnap.exists() ? settingsSnap.data().autoApprove : false;
+				const settingsSnap = await getDoc(doc(db, 'teacher_settings', teacher));
+				let isAutoApprove = settingsSnap.exists() ? settingsSnap.data().autoApprove : false;
+				if (['2026-05-06', '2026-05-07', '2026-05-08'].includes(targetDate)) isAutoApprove = true;
 
 				await addDoc(collection(db, 'observation_applications'), {
-					date: targetDate,
-					classId,
-					period,
-					subject,
-					teacher,
-					applicantEmail: $user.email,
-					applicantName: aName,
-					applicantSubject: aSubject,
-					status: isAutoApprove ? 'APPROVED' : 'PENDING',
-					timestamp: Timestamp.now()
+					date: targetDate, classId, period, subject, teacher,
+					applicantEmail: $user.email, applicantName: aName, applicantSubject: aSubject,
+					status: isAutoApprove ? 'APPROVED' : 'PENDING', timestamp: Timestamp.now()
 				});
 
-				// 웹훅 알림 전송 (자동 승인 여부 포함)
-				await sendWebhookNotification(teacher, aName, aSubject, targetDate, period, subject, isAutoApprove);
+				const webhookUrl = teacherWebhooks[teacher];
+				if (webhookUrl) {
+					await fetch(webhookUrl, {
+						method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							text: `🔔 *참관 신청 알림*\n* 신청자: [${aSubject}] ${aName}\n* 일시: ${targetDate} ${period}교시\n* 과목: ${subject}\n* 상태: ${isAutoApprove ? '✅ 자동 승인' : '⏳ 승인 대기'}`
+						})
+					});
+				}
 			}
 		}
 	}
@@ -296,16 +274,12 @@
 
 	function is7thPeriodRestricted(targetDate: string, period: string) {
 		const day = new Date(targetDate).getDay();
-		if ((day === 1 || day === 3 || day === 5) && period === '7') return true;
-		return false;
+		return (day === 1 || day === 3 || day === 5) && period === '7';
 	}
 
 	function getRepeatingSlot(classId: string, targetDate: string, period: string) {
-		const d = new Date(targetDate);
-		const day = d.getDay(); // 1 (Mon) to 5 (Fri)
-		// Map back to the first week (May 11-15)
-		const refDate = `2026-05-${10 + day}`;
-		return timetableData[classId]?.[refDate]?.[period];
+		const day = new Date(targetDate).getDay();
+		return timetableData[classId]?.[`2026-05-${10 + day}`]?.[period];
 	}
 </script>
 
@@ -314,1000 +288,302 @@
 		<div class="error-state card">
 			<AlertCircle size={48} color="#e63946" />
 			<h2>신청 권한이 없습니다</h2>
-			<p>지도 교사는 참관 신청을 할 수 없습니다. 지도 교사 전용 페이지를 이용해 주세요.</p>
+			<p>지도 교사는 참관 신청을 할 수 없습니다. 지도 교사 페이지를 이용해 주세요.</p>
 			<a href="/supervisor" class="btn btn-primary">지도 교사 페이지로 이동</a>
 		</div>
 	{:else}
-		<nav class="main-nav">
-		<button
-			class="nav-item teacher-tab {viewMode === 'teacher' ? 'active' : ''}"
-			onclick={() => {
-				viewMode = 'teacher';
-				selectedTeacher = null;
-				selectedGrade = 0;
-			}}
-		>
-			<BookOpen size={18} /> 교사별
-		</button>
-		<div class="divider"></div>
-		<div class="grade-tabs">
-			{#each grades as g}
-				<button
-					class="nav-item {viewMode === 'grade' && selectedGrade === g ? 'active' : ''}"
-					onclick={() => {
-						viewMode = 'grade';
-						selectedGrade = g;
-						selectedTeacher = null;
-					}}
-				>
-					{g}학년
+		<header class="page-header">
+			<a href="/" class="back-link">
+				<ArrowLeft size={20} /> 홈으로 돌아가기
+			</a>
+			<nav class="main-nav">
+				<button class="nav-item {viewMode === 'teacher' ? 'active' : ''}" onclick={() => { viewMode = 'teacher'; selectedTeacher = null; }}>
+					<BookOpen size={18} /> 교사별
 				</button>
-			{/each}
-		</div>
-		<div class="divider"></div>
-		<button
-			class="nav-item my-tab {viewMode === 'my' ? 'active' : ''}"
-			onclick={() => {
-				viewMode = 'my';
-				selectedTeacher = null;
-				selectedGrade = 0;
-			}}
-		>
-			<User size={18} /> 내 일정
-		</button>
-	</nav>
-
-	{#if loading}
-		<div class="loading-state">
-			<Loader2 class="spin" size={48} />
-			<p>데이터를 불러오는 중입니다...</p>
-		</div>
-	{:else if viewMode === 'grade'}
-		<!-- Grade View -->
-		<div class="timetable-wrapper">
-			<table class="timetable">
-				<thead>
-					<tr>
-						<th class="sticky-col period-header corner-tl">교시</th>
-						{#each getClassesForGrade(selectedGrade) as classId, i}
-							<th class={i === getClassesForGrade(selectedGrade).length - 1 ? 'corner-tr' : ''}
-								>{parseInt(classId.substring(2))}반</th
-							>
-						{/each}
-					</tr>
-				</thead>
-				<tbody>
-					{#each periods as period}
-						{#if !is7thPeriodRestricted(date, period)}
-							<tr>
-								<td class="sticky-col {period === '7' ? 'last' : ''}">
-									<div class="period-cell">{period}</div>
-								</td>
-								{#each getClassesForGrade(selectedGrade) as classId}
-									{@const slot = getRepeatingSlot(classId, date, period)}
-									{@const apps = applications.filter(
-										(app) => app.date === date && app.classId === classId && app.period === period
-									)}
-									{@const isMine = apps.some((a) => a.applicantEmail === $user?.email)}
-									{@const isFull = apps.length >= maxApplicants}
-									{@const isGlobalRestricted = slot
-										? teacherRestrictions.includes(slot.teacher)
-										: false}
-									{@const isTeacherRestricted = slot
-										? restrictions.includes(`${slot.teacher}_${date}_${period}_${classId}`) ||
-											isGlobalRestricted
-										: false}
-
-									<td
-										class="slot-cell {slot ? 'active' : 'empty'} {isTeacherRestricted
-											? 'restricted'
-											: ''}"
-									>
-										{#if slot}
-											{#if isTeacherRestricted}
-												<div class="slot-restricted-msg">
-													<Lock size={12} />
-													{isGlobalRestricted ? '전면 참관 불가' : '참관 불가'}
-												</div>
-											{:else}
-												<button
-													class="slot-btn {isMine ? 'mine' : ''} {isFull && !isMine ? 'full' : ''}"
-													onclick={() =>
-														toggleApplication(date, classId, period, slot.subject, slot.teacher)}
-												>
-													<div class="slot-row">
-														<div class="slot-info-main">
-															<span
-																class="subject"
-																style="background-color: {getSubjectColor(slot.subject)}"
-																>{slot.subject}</span
-															>
-															<span class="teacher">{slot.teacher}</span>
-														</div>
-														<div class="status-box">
-															<div class="applicant-count">
-																<Users size={12} />
-																{apps.length}/{maxApplicants}
-															</div>
-															{#if isMine}
-																{@const myApp = apps.find((a) => a.applicantEmail === $user?.email)}
-																<span
-																	class="my-badge {myApp?.status === 'APPROVED'
-																		? 'approved'
-																		: 'pending'}"
-																>
-																	{myApp?.status === 'APPROVED' ? '신청완료' : '승인대기'}
-																</span>
-															{/if}
-														</div>
-													</div>
-
-													{#if apps.some((a) => a.status === 'APPROVED')}
-														<div class="applicant-list">
-															{#each apps.filter((a) => a.status === 'APPROVED') as app}
-																<span class="applicant-tag approved"
-																	>{app.applicantSubject
-																		? `[${app.applicantSubject}] `
-																		: ''}{app.applicantName}</span
-																>
-															{/each}
-														</div>
-													{/if}
-												</button>
-											{/if}
-										{:else}
-											<div class="no-class">-</div>
-										{/if}
-									</td>
-								{/each}
-							</tr>
-						{/if}
+				<div class="divider"></div>
+				<div class="grade-tabs">
+					{#each grades as g}
+						<button class="nav-item {viewMode === 'grade' && selectedGrade === g ? 'active' : ''}" onclick={() => { viewMode = 'grade'; selectedGrade = g; selectedTeacher = null; }}>
+							{g}학년
+						</button>
 					{/each}
-				</tbody>
-			</table>
-		</div>
-	{:else if viewMode === 'teacher' && !selectedTeacher}
-		<!-- Teacher List View -->
-		<div class="teacher-selection">
-			<div class="view-header compact-header">
-				<h2>전체 지도 교사 목록</h2>
-				<span class="header-notice">시간표를 확인하려는 선생님을 선택하세요.</span>
+				</div>
+				<div class="divider"></div>
+				<button class="nav-item {viewMode === 'my' ? 'active' : ''}" onclick={() => { viewMode = 'my'; selectedTeacher = null; }}>
+					<User size={18} /> 내 일정
+				</button>
+			</nav>
+		</header>
+
+		{#if loading}
+			<div class="loading-state">
+				<Loader2 class="spin" size={48} />
+				<p>데이터를 불러오는 중입니다...</p>
 			</div>
+		{:else if viewMode === 'grade'}
+			<!-- Grade View with Dual Nav -->
+			<div class="dual-nav">
+				<div class="nav-group week-nav">
+					<button class="nav-arrow" disabled={currentWeekIndex === 0} onclick={prevWeek}><ChevronLeft size={20} /></button>
+					<span class="nav-label">{currentWeekIndex + 1}주차</span>
+					<button class="nav-arrow" disabled={currentWeekIndex === 3} onclick={nextWeek}><ChevronRight size={20} /></button>
+				</div>
+				<div class="nav-group date-nav">
+					<button class="nav-arrow" onclick={prevDate}><ChevronLeft size={20} /></button>
+					<div class="date-info">
+						<Calendar size={16} />
+						<span class="nav-label">{formatDateShort(date)}</span>
+					</div>
+					<button class="nav-arrow" onclick={nextDate}><ChevronRight size={20} /></button>
+				</div>
+			</div>
+
+			<div class="timetable-wrapper">
+				<table class="timetable">
+					<thead>
+						<tr>
+							<th class="sticky-col period-header corner-tl">교시</th>
+							{#each getClassesForGrade(selectedGrade) as classId, i}
+								<th class={i === getClassesForGrade(selectedGrade).length - 1 ? 'corner-tr' : ''}>{parseInt(classId.substring(2))}반</th>
+							{/each}
+						</tr>
+					</thead>
+					<tbody>
+						{#each periods as period}
+							{#if !is7thPeriodRestricted(date, period)}
+								<tr>
+									<td class="sticky-col {period === '7' ? 'last' : ''}"><div class="period-cell">{period}</div></td>
+									{#each getClassesForGrade(selectedGrade) as classId}
+										{@const slot = getRepeatingSlot(classId, date, period)}
+										{@const apps = applications.filter((app) => app.date === date && app.classId === classId && app.period === period)}
+										{@const isMine = apps.some((a) => a.applicantEmail === $user?.email)}
+										{@const isFull = apps.length >= maxApplicants}
+										{@const isGlobalRestricted = slot ? teacherRestrictions.includes(slot.teacher) : false}
+										{@const isDisabledDate = isDateDisabled(date)}
+										{@const isTeacherRestricted = slot ? (restrictions.includes(`${slot.teacher}_${date}_${period}_${classId}`) || isGlobalRestricted) : false}
+
+										<td class="slot-cell {slot ? 'active' : 'empty'} {isTeacherRestricted || isDisabledDate ? 'restricted' : ''}">
+											{#if slot}
+												{#if isTeacherRestricted || isDisabledDate}
+													<div class="slot-restricted-msg"><Lock size={12} /> {isDisabledDate ? '신청 불가일' : '참관 불가'}</div>
+												{:else}
+													<button class="slot-btn {isMine ? 'mine' : ''} {isFull && !isMine ? 'full' : ''}" onclick={() => toggleApplication(date, classId, period, slot.subject, slot.teacher)}>
+														<div class="slot-row">
+															<div class="slot-info-main">
+																<span class="subject" style="background-color: {getSubjectColor(slot.subject)}">{slot.subject}</span>
+																<span class="teacher">{slot.teacher}</span>
+															</div>
+															<div class="applicant-count"><Users size={12} /> {apps.length}/{maxApplicants}</div>
+														</div>
+														{#if isMine}
+															<span class="my-badge {apps.find(a => a.applicantEmail === $user?.email)?.status === 'APPROVED' ? 'approved' : 'pending'}">
+																{apps.find(a => a.applicantEmail === $user?.email)?.status === 'APPROVED' ? '신청완료' : '승인대기'}
+															</span>
+														{/if}
+													</button>
+												{/if}
+											{:else}<div class="no-class">-</div>{/if}
+										</td>
+									{/each}
+								</tr>
+							{/if}
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{:else if viewMode === 'teacher' && !selectedTeacher}
+			<!-- Teacher Selection (Fallback) -->
 			<div class="teacher-grid">
-				{#each teachers as teacher}
-					<button class="teacher-card card" onclick={() => (selectedTeacher = teacher)}>
-						<span
-							class="teacher-subject-badge"
-							style="background-color: {getSubjectColor(teacherToSubject[teacher])}"
-						>
-							{teacherToSubject[teacher]}
-						</span>
-						<span class="teacher-name">{teacher}</span>
+				{#each teachers as t}
+					<button class="teacher-card card" onclick={() => selectedTeacher = t}>
+						<span class="teacher-subject-badge" style="background-color: {getSubjectColor(teacherToSubject[t])}">{teacherToSubject[t]}</span>
+						<span class="teacher-name">{t}</span>
 					</button>
 				{/each}
 			</div>
-		</div>
-	{:else if viewMode === 'teacher' && selectedTeacher}
-		<!-- Teacher Weekly View -->
-		<div class="view-header teacher-view-header">
-			<button class="back-btn" onclick={() => (selectedTeacher = null)}>
-				<ChevronLeft size={20} /> 목록
-			</button>
-			<div class="teacher-title">
-				<User size={24} />
-				<h2>{selectedTeacher} 선생님</h2>
+		{:else if viewMode === 'teacher' && selectedTeacher}
+			<!-- Teacher 4-Week View -->
+			<div class="view-header-row">
+				<button class="back-btn" onclick={() => selectedTeacher = null}><ChevronLeft size={20} /> 목록</button>
+				<div class="teacher-title"><User size={24} /> <h2>{selectedTeacher} 선생님</h2></div>
 			</div>
-		</div>
 
-		<div class="week-selector">
-			<button
-				class="week-nav-btn"
-				disabled={currentWeekIndex === 0}
-				onclick={() => currentWeekIndex--}
-			>
-				<ChevronLeft size={20} />
-			</button>
-			<div class="week-info">
-				<Calendar size={18} />
-				<span class="week-label">{currentWeekIndex + 1}주차</span>
-				<span class="week-dates"
-					>({weekDates[0].split('-').slice(1).join('/')} ~ {weekDates[4]
-						.split('-')
-						.slice(1)
-						.join('/')})</span
-				>
+			<div class="week-selector">
+				<button class="week-nav-btn" disabled={currentWeekIndex === 0} onclick={() => currentWeekIndex--}><ChevronLeft size={20} /></button>
+				<div class="week-info"><Calendar size={18} /> <span class="week-label">{currentWeekIndex + 1}주차</span> <span class="week-dates">({formatDateShort(weekDates[0])} ~ {formatDateShort(weekDates[4])})</span></div>
+				<button class="week-nav-btn" disabled={currentWeekIndex === 3} onclick={() => currentWeekIndex++}><ChevronRight size={20} /></button>
 			</div>
-			<button
-				class="week-nav-btn"
-				disabled={currentWeekIndex === 2}
-				onclick={() => currentWeekIndex++}
-			>
-				<ChevronRight size={20} />
-			</button>
-		</div>
 
-		<div class="timetable-wrapper">
-			<table class="timetable weekly">
-				<thead>
-					<tr>
-						<th class="sticky-col period-header">교시</th>
-						{#each weekDays as day, i}
-							<th>{day} ({weekDates[i].split('-').slice(1).join('/')})</th>
-						{/each}
-					</tr>
-				</thead>
-				<tbody>
-					{#each periods as period}
+			<div class="timetable-wrapper">
+				<table class="timetable weekly">
+					<thead>
 						<tr>
-							<td class="sticky-col {period === '7' ? 'last' : ''}">
-								<div class="period-cell">{period}</div>
-							</td>
-							{#each weekDates as d}
-								{@const classId = Object.keys(timetableData).find(
-									(id) => getRepeatingSlot(id, d, period)?.teacher === selectedTeacher
-								)}
-								{@const slot = classId ? getRepeatingSlot(classId, d, period) : null}
-								{@const apps = classId
-									? applications.filter(
-											(app) => app.date === d && app.classId === classId && app.period === period
-										)
-									: []}
-								{@const isMine = apps.some((a) => a.applicantEmail === $user?.email)}
-								{@const isFull = apps.length >= maxApplicants}
-								{@const isRestricted = is7thPeriodRestricted(d, period)}
-								{@const isGlobalRestricted = selectedTeacher
-									? teacherRestrictions.includes(selectedTeacher)
-									: false}
-								{@const isTeacherRestricted =
-									slot && classId
-										? restrictions.includes(`${selectedTeacher}_${d}_${period}_${classId}`) ||
-											isGlobalRestricted
-										: false}
+							<th class="sticky-col period-header">교시</th>
+							{#each weekDays as day, i}<th>{day} ({formatDateShort(weekDates[i])})</th>{/each}
+						</tr>
+					</thead>
+					<tbody>
+						{#each periods as period}
+							<tr>
+								<td class="sticky-col {period === '7' ? 'last' : ''}"><div class="period-cell">{period}</div></td>
+								{#each weekDates as d}
+									{@const classId = Object.keys(timetableData).find(id => getRepeatingSlot(id, d, period)?.teacher === selectedTeacher)}
+									{@const slot = classId ? getRepeatingSlot(classId, d, period) : null}
+									{@const apps = classId ? applications.filter(app => app.date === d && app.classId === classId && app.period === period) : []}
+									{@const isMine = apps.some(a => a.applicantEmail === $user?.email)}
+									{@const isFull = apps.length >= maxApplicants}
+									{@const isRestricted = is7thPeriodRestricted(d, period)}
+									{@const isGlobalRestricted = teacherRestrictions.includes(selectedTeacher!)}
+									{@const isDisabledDate = isDateDisabled(d)}
+									{@const isTeacherRestricted = (slot && classId) ? (restrictions.includes(`${selectedTeacher}_${d}_${period}_${classId}`) || isGlobalRestricted) : false}
 
-								<td
-									class="slot-cell {slot
-										? 'active'
-										: isRestricted
-											? 'restricted'
-											: 'empty'} {isTeacherRestricted ? 'restricted' : ''}"
-								>
-									{#if slot && classId}
-										{#if isTeacherRestricted}
-											<div class="slot-restricted-msg">
-												<Lock size={12} />
-												{isGlobalRestricted ? '전면 참관 불가' : '참관 불가'}
-											</div>
-										{:else}
-											<button
-												class="slot-btn {isMine ? 'mine' : ''} {isFull && !isMine ? 'full' : ''}"
-												onclick={() =>
-													toggleApplication(d, classId, period, slot.subject, selectedTeacher!)}
-											>
-												<div class="slot-row">
-													<div class="slot-info-main">
-														<span
-															class="subject"
-															style="background-color: {getSubjectColor(slot.subject)}"
-															>{slot.subject}</span
-														>
-														<span class="class-label"
-															>{classId.substring(0, 1)}-{parseInt(classId.substring(2))}</span
-														>
-													</div>
-													<div class="status-box">
-														<div class="applicant-count">
-															<Users size={12} />
-															{apps.length}/{maxApplicants}
+									<td class="slot-cell {slot ? 'active' : 'empty'} {isTeacherRestricted || isDisabledDate ? 'restricted' : ''}">
+										{#if slot && classId}
+											{#if isTeacherRestricted || isDisabledDate}
+												<div class="slot-restricted-msg"><Lock size={12} /> {isDisabledDate ? '신청 불가일' : '참관 불가'}</div>
+											{:else}
+												<button class="slot-btn {isMine ? 'mine' : ''} {isFull && !isMine ? 'full' : ''}" onclick={() => toggleApplication(d, classId, period, slot.subject, selectedTeacher!)}>
+													<div class="slot-row">
+														<div class="slot-info-main">
+															<span class="subject" style="background-color: {getSubjectColor(slot.subject)}">{slot.subject}</span>
+															<span class="class-label">{classId.substring(0, 1)}-{parseInt(classId.substring(2))}</span>
 														</div>
-														{#if isMine}
-															{@const myApp = apps.find((a) => a.applicantEmail === $user?.email)}
-															<span
-																class="my-badge {myApp?.status === 'APPROVED'
-																	? 'approved'
-																	: 'pending'}"
-															>
-																{myApp?.status === 'APPROVED' ? '신청완료' : '승인대기'}
-															</span>
-														{/if}
+														<div class="applicant-count"><Users size={12} /> {apps.length}/{maxApplicants}</div>
 													</div>
-												</div>
-
-												{#if apps.some((a) => a.status === 'APPROVED')}
-													<div class="applicant-list">
-														{#each apps.filter((a) => a.status === 'APPROVED') as app}
-															<span class="applicant-tag approved"
-																>{app.applicantSubject
-																	? `[${app.applicantSubject}] `
-																	: ''}{app.applicantName}</span
-															>
-														{/each}
-													</div>
-												{/if}
-											</button>
-										{/if}
-									{:else if isRestricted}
-										<div class="no-class restricted">수업 없음</div>
-									{:else}
-										<div class="no-class">-</div>
-									{/if}
-								</td>
-							{/each}
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-	{:else if viewMode === 'my'}
-		<!-- Student Personal Schedule View -->
-		<div class="view-header my-schedule-header">
-			<div class="title-with-notice">
-				<h2>내 참관 일정 (주간)</h2>
-				<span class="notice-text">승인된 참관 일정만 표시됩니다.</span>
-			</div>
-		</div>
-
-		<div class="week-selector">
-			<button
-				class="week-nav-btn"
-				disabled={currentWeekIndex === 0}
-				onclick={() => currentWeekIndex--}
-			>
-				<ChevronLeft size={20} />
-			</button>
-			<div class="week-info">
-				<Calendar size={18} />
-				<span class="week-label">{currentWeekIndex + 1}주차</span>
-				<span class="week-dates"
-					>({weekDates[0].split('-').slice(1).join('/')} ~ {weekDates[4]
-						.split('-')
-						.slice(1)
-						.join('/')})</span
-				>
-			</div>
-			<button
-				class="week-nav-btn"
-				disabled={currentWeekIndex === 2}
-				onclick={() => currentWeekIndex++}
-			>
-				<ChevronRight size={20} />
-			</button>
-		</div>
-
-		<div class="timetable-wrapper">
-			<table class="timetable weekly">
-				<thead>
-					<tr>
-						<th class="sticky-col period-header">교시</th>
-						{#each weekDays as day, i}
-							<th>{day} ({weekDates[i].split('-').slice(1).join('/')})</th>
+													{#if isMine}
+														<span class="my-badge {apps.find(a => a.applicantEmail === $user?.email)?.status === 'APPROVED' ? 'approved' : 'pending'}">
+															{apps.find(a => a.applicantEmail === $user?.email)?.status === 'APPROVED' ? '신청완료' : '승인대기'}
+														</span>
+													{/if}
+												</button>
+											{/if}
+										{:else if isRestricted}<div class="no-class restricted">수업 없음</div>
+										{:else}<div class="no-class">-</div>{/if}
+									</td>
+								{/each}
+							</tr>
 						{/each}
-					</tr>
-				</thead>
-				<tbody>
-					{#each periods as period}
+					</tbody>
+				</table>
+			</div>
+		{:else if viewMode === 'my'}
+			<!-- My Schedule -->
+			<div class="week-selector">
+				<button class="week-nav-btn" disabled={currentWeekIndex === 0} onclick={() => currentWeekIndex--}><ChevronLeft size={20} /></button>
+				<div class="week-info"><Calendar size={18} /> <span class="week-label">{currentWeekIndex + 1}주차</span></div>
+				<button class="week-nav-btn" disabled={currentWeekIndex === 3} onclick={() => currentWeekIndex++}><ChevronRight size={20} /></button>
+			</div>
+			<div class="timetable-wrapper">
+				<table class="timetable weekly">
+					<thead>
 						<tr>
-							<td class="sticky-col {period === '7' ? 'last' : ''}">
-								<div class="period-cell">{period}</div>
-							</td>
-							{#each weekDates as d}
-								{@const myApp = applications.find(
-									(app) =>
-										app.applicantEmail === $user?.email &&
-										app.date === d &&
-										app.period === period &&
-										app.status === 'APPROVED'
-								)}
-								<td class="slot-cell {myApp ? 'active' : 'empty'}">
-									{#if myApp}
-										<div
-											class="slot-content card compact"
-											style="background-color: {getSubjectColor(myApp.subject)}33; border: 1px solid {getSubjectColor(myApp.subject)}80;"
-										>
-											<div class="status-badge approved absolute">확정</div>
-											<div class="slot-info single-row">
-												<span
-													class="subject"
-													style="background-color: {getSubjectColor(myApp.subject)}"
-													>{myApp.subject}</span
-												>
-												<span class="class-label"
-													>{myApp.classId.substring(0, 1)}-{parseInt(
-														myApp.classId.substring(2)
-													)}</span
-												>
-												<span class="teacher-name-small">{myApp.teacher}</span>
-											</div>
-										</div>
-									{:else}
-										<div class="no-class">-</div>
-									{/if}
-								</td>
-							{/each}
+							<th class="sticky-col period-header">교시</th>
+							{#each weekDays as day, i}<th>{day} ({formatDateShort(weekDates[i])})</th>{/each}
 						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
+					</thead>
+					<tbody>
+						{#each periods as period}
+							<tr>
+								<td class="sticky-col {period === '7' ? 'last' : ''}"><div class="period-cell">{period}</div></td>
+								{#each weekDates as d}
+									{@const myApp = applications.find(a => a.applicantEmail === $user?.email && a.date === d && a.period === period && a.status === 'APPROVED')}
+									<td class="slot-cell {myApp ? 'active' : 'empty'}">
+										{#if myApp}
+											<div class="slot-content card compact" style="background-color: {getSubjectColor(myApp.subject)}33; border: 1px solid {getSubjectColor(myApp.subject)}80;">
+												<div class="slot-info single-row">
+													<span class="subject" style="background-color: {getSubjectColor(myApp.subject)}">{myApp.subject}</span>
+													<span class="class-label">{myApp.classId.substring(0, 1)}-{parseInt(myApp.classId.substring(2))}</span>
+													<span class="teacher-name-small">{myApp.teacher}</span>
+												</div>
+											</div>
+										{:else}<div class="no-class">-</div>{/if}
+									</td>
+								{/each}
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{/if}
 	{/if}
-{/if}
 </div>
 
 <style>
-	.full-width {
-		max-width: 1400px !important;
-		margin: 0 auto;
-		padding: 0 2rem 2rem 2rem;
-	}
+	.full-width { max-width: 1400px !important; margin: 0 auto; padding: 0 2rem 2rem 2rem; }
+	.page-header { margin-bottom: 1.5rem; padding-top: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+	.back-link { display: flex; align-items: center; gap: 0.5rem; color: #64748b; text-decoration: none; font-weight: 700; width: fit-content; }
+	.back-link:hover { color: var(--header-bg); }
+	
+	.main-nav { display: flex; align-items: center; justify-content: center; background: #f8fafc; padding: 0.4rem; border-radius: 12px; border: 1px solid #e2e8f0; }
+	.grade-tabs { display: flex; gap: 0.3rem; }
+	.nav-item { padding: 0.5rem 1rem; border-radius: 8px; border: none; background: none; font-weight: 800; color: #64748b; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; transition: all 0.2s; font-size: 0.9rem; }
+	.nav-item:hover { background: #f1f5f9; color: #1e293b; }
+	.nav-item.active { background: white; color: var(--header-bg); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
+	.divider { width: 1px; height: 20px; background: #cbd5e1; margin: 0 0.8rem; }
 
-	.page-header {
-		margin-bottom: 2rem;
-		padding-top: 1rem;
-	}
+	/* Dual Nav System */
+	.dual-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; }
+	.nav-group { display: flex; align-items: center; gap: 0.8rem; background: #f8fafc; padding: 0.4rem 0.8rem; border-radius: 12px; border: 1px solid #e2e8f0; }
+	.nav-arrow { background: white; border: 1px solid #e2e8f0; color: #64748b; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+	.nav-arrow:hover:not(:disabled) { background: var(--header-bg); color: white; border-color: var(--header-bg); }
+	.nav-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
+	.nav-label { font-weight: 900; font-size: 1rem; color: var(--header-bg); min-width: 60px; text-align: center; }
+	.date-info { display: flex; align-items: center; gap: 0.5rem; color: var(--header-bg); min-width: 120px; justify-content: center; }
 
-	.header-top {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
+	.timetable-wrapper { background: white; border-radius: 16px; overflow-x: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); padding: 0.8rem; }
+	.timetable { width: 100%; border-collapse: separate; border-spacing: 0; }
+	.timetable th { background: #283151 !important; padding: 0.6rem; font-weight: 900; color: #ffffff; font-size: 0.9rem; border: 1px solid rgba(255, 255, 255, 0.1); text-align: center; }
+	.timetable td { border: 1px solid #edf2f7; height: 70px; vertical-align: top; }
+	.timetable.weekly td { width: 200px; }
 
-	.back-link {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		color: #64748b;
-		text-decoration: none;
-		font-weight: 700;
-		width: fit-content;
-	}
+	.sticky-col { position: sticky; left: 0; background: #283151 !important; z-index: 5; border-right: 2px solid #0f172a !important; width: 40px !important; min-width: 40px; padding: 0 !important; }
+	.period-cell { display: flex; align-items: center; justify-content: center; font-weight: 900; color: #ffffff; font-size: 1.1rem; height: 100%; background: #283151; }
 
-	.back-link:hover {
-		color: var(--header-bg);
-	}
+	.slot-cell.restricted { background: #f1f5f9; }
+	.slot-restricted-msg { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; font-size: 0.7rem; font-weight: 800; gap: 0.2rem; text-align: center; }
+	
+	.slot-btn { width: 100%; height: 100%; border: none; background: none; padding: 0.4rem; display: flex; flex-direction: column; text-align: left; cursor: pointer; transition: all 0.15s; gap: 0.3rem; }
+	.slot-btn:hover { background: #f8fafc; }
+	.slot-btn.mine { background: #f0fdf4; border: 2px solid #22c55e; border-radius: 8px; }
+	.slot-btn.full { opacity: 0.6; cursor: not-allowed; }
 
-	.title-group {
-		display: flex;
-		align-items: center;
-		gap: 0.8rem;
-		color: var(--header-bg);
-	}
+	.slot-row { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+	.slot-info-main { display: flex; align-items: center; gap: 0.3rem; }
+	.subject { font-weight: 800; font-size: 0.75rem; padding: 0.1rem 0.35rem; border-radius: 4px; white-space: nowrap; }
+	.teacher, .class-label { font-size: 0.75rem; color: #64748b; font-weight: 700; }
+	.applicant-count { font-size: 0.7rem; color: #94a3b8; font-weight: 700; display: flex; align-items: center; gap: 0.1rem; }
+	
+	.my-badge { color: white; font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 800; width: fit-content; margin-top: auto; }
+	.my-badge.pending { background: #f59e0b; }
+	.my-badge.approved { background: #22c55e; }
 
-	.title-group h1 {
-		margin: 0;
-		font-size: 2rem;
-		font-weight: 900;
-	}
+	.teacher-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.6rem; margin-top: 1rem; }
+	.teacher-card { padding: 0.8rem; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; background: white; cursor: pointer; text-align: center; border: 2px solid transparent; }
+	.teacher-card:hover { transform: translateY(-3px); box-shadow: 0 8px 12px rgba(0, 0, 0, 0.08); border-color: #e2e8f0; }
+	.teacher-subject-badge { padding: 0.15rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 800; }
+	.teacher-name { font-weight: 800; color: #2d3748; font-size: 1rem; }
 
-	.main-nav {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: #f8fafc;
-		padding: 0.5rem;
-		border-radius: 12px;
-		margin-bottom: 1rem; /* Reduced from 2rem */
-		border: 1px solid #e2e8f0;
-	}
+	.view-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+	.back-btn { display: flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.8rem; background: #f1f5f9; border: none; border-radius: 8px; font-weight: 800; color: #475569; cursor: pointer; }
+	.teacher-title { display: flex; align-items: center; gap: 0.6rem; color: var(--header-bg); }
+	.teacher-title h2 { margin: 0; font-size: 1.4rem; }
 
-	.grade-tabs {
-		display: flex;
-		gap: 0.5rem;
-	}
+	.week-selector { display: flex; align-items: center; justify-content: center; gap: 1.5rem; padding: 0.6rem; background: #f8fafc; border-radius: 12px; margin-bottom: 1rem; border: 1px solid #e2e8f0; }
+	.week-info { display: flex; align-items: center; gap: 0.6rem; color: var(--header-bg); }
+	.week-label { font-weight: 900; font-size: 1rem; }
+	.week-dates { font-size: 0.85rem; color: #64748b; font-weight: 700; }
+	.week-nav-btn { background: white; border: 1px solid #e2e8f0; color: #64748b; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+	.week-nav-btn:hover:not(:disabled) { background: var(--header-bg); color: white; }
 
-	.nav-item {
-		padding: 0.6rem 1.2rem;
-		border-radius: 8px;
-		border: none;
-		background: none;
-		font-weight: 800;
-		color: #64748b;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		transition: all 0.2s;
-	}
+	.no-class { height: 100%; display: flex; align-items: center; justify-content: center; color: #e2e8f0; font-weight: 800; font-size: 0.8rem; }
+	.loading-state { text-align: center; padding: 5rem 0; color: #666; }
+	.spin { animation: spin 1s linear infinite; color: var(--header-bg); }
+	@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-	.nav-item:hover {
-		background: #f1f5f9;
-		color: #1e293b;
-	}
+	.error-state { text-align: center; padding: 5rem 2rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
 
-	.nav-item.active {
-		background: white;
-		color: var(--header-bg);
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-	}
-
-	.divider {
-		width: 1px;
-		height: 24px;
-		background: #cbd5e1;
-		margin: 0 1rem;
-	}
-
-	.timetable-wrapper {
-		background: white;
-		border-radius: 16px;
-		overflow-x: auto;
-		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-		padding: 1rem;
-	}
-
-	.timetable {
-		width: 100%;
-		border-collapse: separate;
-		border-spacing: 0;
-	}
-	.timetable th,
-	.timetable td {
-		border: 1px solid #edf2f7;
-		width: 120px;
-	}
-	.timetable.weekly th,
-	.timetable.weekly td {
-		width: 200px;
-	}
-
-	.timetable th {
-		background: #283151 !important; /* Unified Header BG */
-		padding: 0.6rem;
-		font-weight: 900;
-		color: #ffffff; /* White text */
-		font-size: 0.95rem;
-		border: 1px solid rgba(255, 255, 255, 0.1);
-	}
-
-	.corner-tl {
-		border-top-left-radius: 12px !important;
-	}
-	.corner-tr {
-		border-top-right-radius: 12px !important;
-	}
-
-	.sticky-col {
-		position: sticky;
-		left: 0;
-		background: #283151 !important; /* Unified Header BG */
-		z-index: 5;
-		border-right: 2px solid #0f172a !important;
-		width: 40px !important;
-		min-width: 40px !important;
-		max-width: 40px !important;
-		padding: 0 !important;
-		vertical-align: middle !important;
-	}
-
-	.period-header {
-		border-top-left-radius: 10px;
-		width: 40px !important;
-		min-width: 40px !important;
-		max-width: 40px !important;
-		background: #283151 !important;
-	}
-	.period-cell {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		text-align: center;
-		font-weight: 900;
-		color: #ffffff; /* White text */
-		font-size: 1.1rem;
-		height: 100%;
-		width: 100%;
-		background: #283151; /* Fill the background explicitly */
-	}
-
-	.period-cell.last {
-		border-bottom-left-radius: 10px;
-	}
-
-	.slot-cell {
-		height: 80px;
-		vertical-align: top;
-		border: 1px solid #edf2f7;
-	}
-	.slot-cell.restricted {
-		background: #f1f5f9;
-	}
-
-	.slot-restricted-msg {
-		height: 100%;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		color: #94a3b8;
-		font-size: 0.75rem;
-		font-weight: 800;
-		gap: 0.3rem;
-		padding: 0.5rem;
-		text-align: center;
-	}
-
-	.slot-btn {
-		width: 100%;
-		height: 100%;
-		border: none;
-		background: none;
-		padding: 0.4rem;
-		display: flex;
-		flex-direction: column;
-		text-align: left;
-		cursor: pointer;
-		transition: all 0.2s;
-		gap: 0.3rem;
-	}
-
-	.slot-btn:hover {
-		background: #f8fafc;
-	}
-	.slot-btn.mine {
-		background: #f0fdf4;
-		border: 2px solid #22c55e;
-		border-radius: 8px;
-	}
-	.slot-btn.full {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.slot-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		width: 100%;
-		gap: 0.4rem;
-	}
-
-	.slot-info-main {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-	}
-
-	.slot-info {
-		display: flex;
-		flex-direction: row;
-		align-items: center;
-		gap: 0.4rem;
-	}
-	.subject {
-		font-weight: 800;
-		font-size: 0.8rem;
-		padding: 0.1rem 0.4rem;
-		border-radius: 4px;
-		width: fit-content;
-		white-space: nowrap;
-	}
-	.teacher,
-	.class-label {
-		font-size: 0.8rem;
-		color: #64748b;
-		font-weight: 700;
-		white-space: nowrap;
-	}
-
-	.status-box {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		gap: 0.4rem;
-	}
-
-	.applicant-count {
-		font-size: 0.75rem;
-		color: #94a3b8;
-		font-weight: 700;
-		display: flex;
-		align-items: center;
-		gap: 0.2rem;
-	}
-	.my-badge {
-		color: white;
-		font-size: 0.7rem;
-		padding: 0.1rem 0.4rem;
-		border-radius: 4px;
-		font-weight: 800;
-	}
-	.my-badge.pending {
-		background: #f59e0b;
-	}
-	.my-badge.approved {
-		background: #22c55e;
-	}
-
-	.applicant-list {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.2rem;
-		margin-top: 0.2rem;
-		padding-top: 0.2rem;
-		border-top: 1px dashed #e2e8f0;
-	}
-	.applicant-tag {
-		background: rgba(0, 0, 0, 0.05);
-		color: #475569;
-		font-size: 0.7rem;
-		font-weight: 700;
-		padding: 0.05rem 0.3rem;
-		border-radius: 4px;
-		white-space: nowrap;
-		border: 1px solid transparent;
-	}
-	.applicant-tag.approved {
-		background-color: #f0fdf4;
-		color: #166534;
-		border-color: #bbf7d0;
-	}
-
-	.my-schedule-header {
-		margin-bottom: 1rem !important;
-	}
-	.title-with-notice {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-	}
-	.title-with-notice h2 {
-		margin: 0;
-	}
-	.notice-text {
-		font-size: 0.9rem;
-		color: #64748b;
-		font-weight: 700;
-	}
-
-	.slot-info.single-row {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-		width: 100%;
-		overflow: hidden;
-	}
-	.teacher-name-small {
-		font-size: 0.75rem;
-		color: #475569;
-		font-weight: 700;
-		white-space: nowrap;
-	}
-	.status-badge {
-		font-size: 0.6rem;
-		font-weight: 900;
-		padding: 0.05rem 0.3rem;
-		border-radius: 3px;
-		width: fit-content;
-	}
-	.status-badge.absolute {
-		position: absolute;
-		top: 0.3rem;
-		right: 0.3rem;
-	}
-	.status-badge.approved {
-		background: #f0fdf4;
-		color: #16a34a;
-		border: 1px solid #bbf7d0;
-	}
-
-	.slot-content.card {
-		position: relative;
-		height: 100%;
-		display: flex;
-		flex-direction: column;
-		gap: 0.3rem;
-		padding: 0.4rem;
-		border-radius: 8px;
-		background: white;
-	}
-	.slot-content.card.compact {
-		padding: 0.3rem 0.4rem;
-	}
-
-	.no-class {
-		height: 100%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: #e2e8f0;
-		font-weight: 800;
-	}
-
-	.no-class.restricted {
-		color: #cbd5e0;
-		font-size: 0.8rem;
-	}
-
-	.timetable td {
-		height: 70px; /* Reduced from 80px or higher */
-		border: 1px solid #edf2f7;
-	}
-
-	/* Teacher Selection Styles */
-	.teacher-selection {
-		padding: 0 1rem 1rem 1rem;
-		margin-top: -0.5rem;
-	}
-
-	.compact-header {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		margin-bottom: 1.5rem;
-		gap: 1rem;
-	}
-
-	.compact-header h2 {
-		margin: 0;
-		font-size: 1.5rem;
-	}
-
-	.header-notice {
-		font-size: 0.9rem;
-		color: #64748b;
-		font-weight: 700;
-	}
-
-	.teacher-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-		gap: 0.35rem;
-		margin-top: 0.7rem;
-	}
-
-	.teacher-card {
-		padding: 0.5rem 1rem;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.35rem;
-		transition: all 0.2s;
-		background: white;
-		cursor: pointer;
-		text-align: center;
-		border: 2px solid transparent;
-	}
-
-	.teacher-card:hover {
-		transform: translateY(-4px);
-		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-		border-color: #e2e8f0;
-	}
-
-	.teacher-subject-badge {
-		padding: 0.2rem 0.8rem;
-		border-radius: 20px;
-		font-size: 0.85rem;
-		font-weight: 800;
-		color: #1a202c;
-	}
-
-	.teacher-name {
-		font-weight: 800;
-		color: #2d3748;
-		font-size: 1.1rem;
-	}
-
-	/* Teacher View Header */
-	.teacher-view-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 1.5rem;
-	}
-
-	.back-btn {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.6rem 1rem;
-		background: #f1f5f9;
-		border: none;
-		border-radius: 8px;
-		font-weight: 800;
-		color: #475569;
-		cursor: pointer;
-	}
-
-	.back-btn:hover {
-		background: #e2e8f0;
-	}
-
-	.teacher-title {
-		display: flex;
-		align-items: center;
-		gap: 0.8rem;
-		color: var(--header-bg);
-	}
-
-	.loading-state {
-		text-align: center;
-		padding: 5rem 0;
-		color: #666;
-	}
-
-	/* Week Selector Styling */
-	.week-selector {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 2rem;
-		padding: 0.8rem;
-		background: #f8fafc;
-		border-radius: 12px;
-		margin-bottom: 1rem;
-		border: 1px solid #e2e8f0;
-	}
-
-	.week-info {
-		display: flex;
-		align-items: center;
-		gap: 0.8rem;
-		color: var(--header-bg);
-	}
-
-	.week-label {
-		font-weight: 900;
-		font-size: 1.1rem;
-	}
-
-	.week-dates {
-		font-size: 0.9rem;
-		color: #64748b;
-		font-weight: 700;
-	}
-
-	.week-nav-btn {
-		background: white;
-		border: 1px solid #e2e8f0;
-		color: #64748b;
-		width: 32px;
-		height: 32px;
-		border-radius: 50%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		cursor: pointer;
-		transition: all 0.2s;
-	}
-
-	.week-nav-btn:hover:not(:disabled) {
-		background: var(--header-bg);
-		color: white;
-		border-color: var(--header-bg);
-	}
-
-	.week-nav-btn:disabled {
-		opacity: 0.3;
-		cursor: not-allowed;
-	}
-
-	.spin {
-		animation: spin 1s linear infinite;
-		margin-bottom: 1rem;
-		color: var(--header-bg);
-	}
-
-	@keyframes spin {
-		from {
-			transform: rotate(0deg);
-		}
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
-	@media (max-width: 1024px) {
-		.timetable th,
-		.timetable td {
-			width: 140px;
-		}
-	}
-
-	.error-state {
-		text-align: center;
-		padding: 5rem 2rem;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
+	@media (max-width: 768px) {
+		.dual-nav { flex-direction: column; }
+		.nav-group { width: 100%; justify-content: center; }
 	}
 </style>
