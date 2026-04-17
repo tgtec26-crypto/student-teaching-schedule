@@ -206,7 +206,7 @@
 				`* 일시: ${targetDate} ${period}교시\n` +
 				`* 과목: ${subject}\n\n` +
 				`아래 링크에서 신청을 확인하고 승인해 주세요.\n` +
-				`🔗 [지도 교사 승인 페이지 바로가기](https://snug-student-teaching.vercel.app/supervisor)`
+				`🔗 [지도 교사 승인 페이지 바로가기](https://student-teaching-schedule.vercel.app/supervisor)`
 		};
 
 		try {
