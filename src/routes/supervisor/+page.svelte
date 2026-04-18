@@ -25,6 +25,7 @@
 	} from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { teacherWebhooks } from '$lib/teacherWebhooks';
+	import { teacherMetadata } from '$lib/teacherData';
 
 	let selectedTeacher = $state('');
 	let autoApprove = $state(false);
@@ -64,24 +65,34 @@
 	}
 
 	const teacherToSubject = (() => {
+		const mapping: Record<string, string> = {};
+		Object.values(teacherMetadata).forEach(meta => { if (meta.name && meta.subject) mapping[meta.name] = meta.subject; });
 		const subjectsList: Record<string, Set<string>> = {};
 		Object.values(timetableData).forEach((classData: any) => {
 			Object.values(classData).forEach((dayData: any) => {
 				Object.values(dayData).forEach((slot: any) => {
-					if (slot.teacher) {
+					if (slot.teacher && !mapping[slot.teacher]) {
 						if (!subjectsList[slot.teacher]) subjectsList[slot.teacher] = new Set();
 						subjectsList[slot.teacher].add(slot.subject.replace(/[A-Z0-9]/g, ''));
 					}
 				});
 			});
 		});
-		const mapping: Record<string, string> = {};
 		for (const [teacher, subjects] of Object.entries(subjectsList)) {
 			const arr = Array.from(subjects);
 			mapping[teacher] = arr.length > 0 ? arr[0] : '미지정';
 		}
 		return mapping;
 	})();
+
+	const subjectOrder = ['국어', '한문', '수학', '도덕', '사회', '역사', '물리', '화학', '생명', '지구', '과학', '영어', '기가', '기술', '가정', '체육', '음악', '미술', '진로', '정보', '스포츠', '주제', '동아리'];
+	
+	function getSubjectIndex(subject: string) {
+		if (!subject) return 999;
+		const base = subject.substring(0, 2);
+		const idx = subjectOrder.findIndex(s => s === base);
+		return idx === -1 ? 998 : idx;
+	}
 
 	const teachers = $derived(Object.keys(teacherToSubject)
 		.filter((teacher) => {
@@ -95,7 +106,6 @@
 			return idxA !== idxB ? idxA - idxB : a.localeCompare(b);
 		}));
 
-	// 1. Reactive Data Fetching: Applications
 	$effect(() => {
 		const qApps = query(collection(db, 'observation_applications'), 
 			where('date', '>=', allWeekDates[0]), where('date', '<=', allWeekDates[19]));
@@ -105,7 +115,6 @@
 		});
 	});
 
-	// 2. Teacher-specific data
 	$effect(() => {
 		if (!selectedTeacher) { restrictions = []; autoApprove = false; return; }
 		const unsubRestricted = onSnapshot(query(collection(db, 'restricted_lessons'), where('teacher', '==', selectedTeacher)), (snapshot) => {
@@ -117,18 +126,9 @@
 		return () => { unsubRestricted(); unsubSettings(); };
 	});
 
-	// 3. Auto-select myself
-	$effect(() => {
-		if ($user?.displayName && $isSupervisor && !$isAdmin && !selectedTeacher) {
-			selectedTeacher = $user.displayName.split(' (')[0];
-		}
-	});
+	$effect(() => { if ($user?.displayName && $isSupervisor && !$isAdmin && !selectedTeacher) selectedTeacher = $user.displayName.split(' (')[0]; });
 
-	onMount(() => {
-		return onSnapshot(collection(db, 'teacher_restrictions'), (snapshot) => {
-			teacherRestrictions = snapshot.docs.map((doc) => doc.id);
-		});
-	});
+	onMount(() => { return onSnapshot(collection(db, 'teacher_restrictions'), (snapshot) => { teacherRestrictions = snapshot.docs.map((doc) => doc.id); }); });
 
 	async function toggleAutoApprove() {
 		if (!selectedTeacher) return;
@@ -137,11 +137,8 @@
 
 	async function toggleRestriction(date: string, period: string, classId: string) {
 		const resId = `${selectedTeacher}_${date}_${period}_${classId}`;
-		if (restrictions.includes(resId)) {
-			await deleteDoc(doc(db, 'restricted_lessons', resId));
-		} else {
-			await setDoc(doc(db, 'restricted_lessons', resId), { teacher: selectedTeacher, date, period, classId, updatedAt: new Date() });
-		}
+		if (restrictions.includes(resId)) await deleteDoc(doc(db, 'restricted_lessons', resId));
+		else await setDoc(doc(db, 'restricted_lessons', resId), { teacher: selectedTeacher, date, period, classId, updatedAt: new Date() });
 	}
 
 	async function approveApplication(e: Event, appId: string) {
@@ -176,17 +173,10 @@
 
 <div class="full-width container">
 	{#if !$isSupervisor && !$isAdmin}
-		<div class="error-state card">
-			<AlertCircle size={48} color="#e63946" />
-			<h2>접근 권한이 없습니다</h2>
-			<a href="/" class="btn btn-primary">홈으로 돌아가기</a>
-		</div>
+		<div class="error-state card"><AlertCircle size={48} color="#e63946" /><h2>접근 권한이 없습니다</h2><a href="/" class="btn btn-primary">홈으로 돌아가기</a></div>
 	{:else}
 		{#if $isAdmin && !selectedTeacher}
-			<header class="page-header">
-				<div class="title-group"><Users size={32} /> <h1>지도 교사 전용 페이지</h1></div>
-				<p>선생님을 선택하세요.</p>
-			</header>
+			<header class="page-header"><div class="title-group"><Users size={32} /> <h1>지도 교사 전용 페이지</h1></div><p>선생님을 선택하세요.</p></header>
 			<section class="teacher-grid">
 				{#each teachers as teacher}
 					<button class="teacher-card card" onclick={() => { selectedTeacher = teacher; currentWeekIndex = 0; }}>
@@ -205,10 +195,8 @@
 						{#if teacherRestrictions.includes(selectedTeacher)}<span class="global-restricted-tag"><Lock size={12} /> 차단됨</span>{/if}
 					</div>
 					<div class="header-actions">
-						<button class="btn-action btn-auto-approve {autoApprove ? 'on' : 'off'}" onclick={toggleAutoApprove}>
-							<UserCheck size={16} /> 자동 승인 {autoApprove ? 'ON' : 'OFF'}
-						</button>
-						{#if $isAdmin}<button class="btn-action back slim" onclick={() => selectedTeacher = ''}>목록으로</button>{/if}
+						<button class="btn-action" class:on={autoApprove} onclick={toggleAutoApprove}><UserCheck size={16} /> 자동 승인 {autoApprove ? 'ON' : 'OFF'}</button>
+						{#if $isAdmin}<button class="btn-action" onclick={() => selectedTeacher = ''}><Users size={16} /> 목록으로</button>{/if}
 					</div>
 				</div>
 
@@ -226,9 +214,7 @@
 							<thead>
 								<tr>
 									<th class="sticky-col period-header">교시</th>
-									{#each allWeekDates.slice(currentWeekIndex * 5, (currentWeekIndex + 1) * 5) as d, i}
-										<th>{weekDays[i]} ({d.split('-').slice(1).join('/')})</th>
-									{/each}
+									{#each allWeekDates.slice(currentWeekIndex * 5, (currentWeekIndex + 1) * 5) as d, i}<th>{weekDays[i]} ({d.split('-').slice(1).join('/')})</th>{/each}
 								</tr>
 							</thead>
 							<tbody>
@@ -240,37 +226,40 @@
 											{@const apps = applications.filter(a => a.date === d && a.period === period && (slot ? a.classId === slot.classId : true))}
 											{@const isRestricted = is7thPeriodRestricted(d, period)}
 											{@const isDisabledDate = d === '2026-05-04' || d === '2026-05-05'}
-											<td class="slot-cell {slot ? 'active' : (isRestricted || isDisabledDate) ? 'restricted' : 'empty'}">
-												{#if slot}
+											<td class="slot-cell {(isRestricted || isDisabledDate) ? 'restricted' : slot ? 'active' : 'empty'}">
+												{#if isDisabledDate}
+													<div class="no-class-text">신청 불가</div>
+												{:else if isRestricted}
+													<div class="no-class-text">수업 없음</div>
+												{/if}
+
+												{#if !isDisabledDate && slot}
 													{@const resId = `${selectedTeacher}_${d}_${period}_${slot.classId}`}
-													<div class="slot-content card {restrictions.includes(resId) || isDisabledDate ? 'manually-restricted' : ''}"
-														style="background-color: {getSubjectColor(slot.subject)}{restrictions.includes(resId) || isDisabledDate ? '22' : '66'}; border: 1.5px solid {getSubjectColor(slot.subject)};"
+													{@const isBlocked = restrictions.includes(resId)}
+													<div class="slot-content card {isBlocked ? 'manually-restricted' : ''}"
+														style="background-color: {isBlocked ? '#fff5f5' : getSubjectColor(slot.subject) + '66'}; border: 1.5px solid {isBlocked ? '#fecaca' : getSubjectColor(slot.subject)};"
 													>
 														<div class="slot-info">
 															<span class="subject" style="background-color: {getSubjectColor(slot.subject)}">{slot.subject}</span>
 															<span class="class-label">{slot.classId.substring(0, 1)}-{parseInt(slot.classId.substring(2))}</span>
-															{#if !isDisabledDate}
-																<button class="btn-toggle-restriction" onclick={() => toggleRestriction(d, period, slot.classId)}>
-																	{restrictions.includes(resId) ? '불가' : '가능'}
-																</button>
-															{:else}
-																<div class="disabled-tag"><Lock size={10} /> 차단</div>
-															{/if}
+															<button class="btn-toggle-restriction {isBlocked ? 'is-restricted' : 'is-available'}" onclick={() => toggleRestriction(d, period, slot.classId)}>
+																{isBlocked ? '불가' : '가능'}
+															</button>
 														</div>
 														<div class="applicant-list">
 															{#each apps as app}
-																<div class="app-item {app.status}">
-																	{app.applicantName} 
+																<div class="app-item {app.status || 'PENDING'}">
+																	<span class="app-name">[{app.applicantSubject || '미정'}] {app.applicantName}</span>
 																	{#if app.status === 'PENDING' || !app.status}
-																		<button onclick={(e) => approveApplication(e, app.id)}>V</button>
-																		<button onclick={(e) => declineApplication(e, app.id)}>X</button>
+																		<div class="app-btns">
+																			<button class="btn-v" onclick={(e) => approveApplication(e, app.id)}>승인</button>
+																			<button class="btn-x" onclick={(e) => declineApplication(e, app.id)}>거부</button>
+																		</div>
 																	{/if}
 																</div>
 															{/each}
 														</div>
 													</div>
-												{:else if isRestricted || isDisabledDate}
-													<div class="no-class restricted">{isDisabledDate ? '신청 불가' : '수업 없음'}</div>
 												{/if}
 											</td>
 										{/each}
@@ -294,32 +283,44 @@
 	.teacher-subject-badge { padding: 0.2rem 0.5rem; border-radius: 20px; font-size: 0.75rem; font-weight: 800; }
 	.teacher-name { font-weight: 800; font-size: 1rem; }
 	.calendar-view-container { background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); overflow: hidden; margin-top: 1rem; }
-	.calendar-header-box { padding: 1rem; background: #f8fafc; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+	.calendar-header-box { padding: 0.3rem 1rem; background: #f8fafc; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
 	.teacher-info-row { display: flex; align-items: center; gap: 1rem; }
-	.global-restricted-tag { color: #ef4444; font-weight: 800; font-size: 0.8rem; background: #fee2e2; padding: 0.2rem 0.5rem; border-radius: 4px; }
-	.btn-auto-approve { padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-weight: 800; border: 1px solid #ddd; }
-	.btn-auto-approve.on { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
-	.week-selector { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 0.5rem; background: #f1f5f9; border-bottom: 1px solid #eee; }
-	.week-nav-btn { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 1px solid #ccc; background: white; }
+	.global-restricted-tag { color: #ff7b89; font-weight: 800; font-size: 0.8rem; background: #fee2e2; padding: 0.2rem 0.5rem; border-radius: 4px; }
+	.header-actions { display: flex; gap: 0.4rem; }
+	.btn-action { display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.7rem; border-radius: 6px; cursor: pointer; font-weight: 800; border: 1.5px solid #cbd5e1; background: white; font-size: 0.85rem; color: #1e293b; transition: all 0.2s; line-height: 1; }
+	.btn-action:hover { background: #f1f5f9; border-color: #94a3b8; }
+	.btn-action.on { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+	.week-selector { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 0.4rem; background: #f1f5f9; border-bottom: 1px solid #eee; }
+	.week-nav-btn { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 1px solid #ccc; background: white; display: flex; align-items: center; justify-content: center; padding: 0; }
 	.week-label { font-weight: 900; color: var(--header-bg); }
-	.timetable-wrapper { overflow-x: auto; padding: 1rem; }
-	.timetable { width: 100%; border-collapse: collapse; min-width: 800px; }
-	.timetable th { background: #283151; color: white; padding: 0.5rem; font-size: 0.85rem; border: 1px solid #334155; }
-	.timetable td { border: 1px solid #eee; height: 80px; vertical-align: top; padding: 0.2rem; }
-	.sticky-col { position: sticky; left: 0; background: #283151 !important; width: 40px; color: white; z-index: 10; }
-	.period-cell { display: flex; align-items: center; justify-content: center; height: 100%; font-weight: 900; }
+	.timetable-wrapper { overflow-x: auto; padding: 1.5rem; }
+	.timetable { border-collapse: separate; border-spacing: 6px 0; width: auto; table-layout: fixed; margin: 0 auto; }
+	.timetable th { background: #283151; color: white; padding: 0.5rem; font-size: 0.85rem; width: 210px; border-radius: 12px 12px 0 0; border: none; }
+	.timetable td { border: 1px solid #cbd5e1; height: 80px; vertical-align: top; padding: 0.2rem; width: 210px; background: white; }
+	.sticky-col { position: sticky; left: 0; background: #283151 !important; width: 40px !important; min-width: 40px !important; max-width: 40px !important; color: white; z-index: 10; padding: 0 !important; border: none !important; }
+	th.sticky-col { border-radius: 12px 12px 0 0 !important; }
+	.period-cell { display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: 900; font-size: 1.1rem; color: white; }
 	.slot-content { height: 100%; padding: 0.3rem; border-radius: 6px; position: relative; }
-	.slot-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem; }
-	.subject { font-size: 0.7rem; font-weight: 800; padding: 0.1rem 0.3rem; border-radius: 4px; }
-	.class-label { font-size: 0.7rem; color: #666; font-weight: 700; }
-	.btn-toggle-restriction { font-size: 0.6rem; cursor: pointer; padding: 0.1rem 0.3rem; border: 1px solid #ddd; border-radius: 3px; background: white; }
-	.disabled-tag { font-size: 0.6rem; color: #ef4444; font-weight: 800; display: flex; align-items: center; gap: 0.1rem; }
-	.applicant-list { display: flex; flex-direction: column; gap: 0.2rem; margin-top: 0.3rem; border-top: 1px dashed #ddd; padding-top: 0.3rem; }
-	.app-item { font-size: 0.65rem; font-weight: 700; background: rgba(255,255,255,0.7); padding: 0.2rem; border-radius: 3px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; }
+	.slot-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+	.subject { font-size: 0.85rem; font-weight: 900; padding: 0.2rem 0.4rem; border-radius: 4px; }
+	.class-label { font-size: 0.95rem; color: #1e293b; font-weight: 900; }
+	.btn-toggle-restriction { font-size: 0.8rem; cursor: pointer; padding: 0.2rem 0.5rem; border: 1.5px solid #cbd5e1; border-radius: 4px; background: white; font-weight: 800; transition: all 0.2s; }
+	.btn-toggle-restriction.is-available { background-color: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
+	.btn-toggle-restriction.is-available:hover { background-color: #dcfce7; }
+	.btn-toggle-restriction.is-restricted { background-color: #fff5f5; border-color: #fecaca; color: #ff7b89; }
+	.btn-toggle-restriction.is-restricted:hover { background-color: #fee2e2; }
+	.applicant-list { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.5rem; border-top: 1px dashed #cbd5e1; padding-top: 0.5rem; }
+	.app-item { font-size: 0.8rem; font-weight: 800; background: rgba(255,255,255,0.8); padding: 0.3rem 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e2e8f0; }
 	.app-item.APPROVED { color: #166534; background: #dcfce7; border-color: #bbf7d0; }
-	.app-item button { font-size: 0.6rem; cursor: pointer; padding: 0 0.2rem; margin-left: 0.1rem; }
-	.no-class { display: flex; align-items: center; justify-content: center; height: 100%; color: #ccc; font-size: 0.7rem; font-weight: 800; }
-	.no-class.restricted { color: #ef4444; background: #fef2f2; }
+	.app-item.DECLINED { color: #991b1b; background: #fee2e2; opacity: 0.6; }
+	.app-btns { display: flex; gap: 4px; }
+	.btn-v, .btn-x { border: none; border-radius: 4px; padding: 4px 10px !important; font-size: 0.85rem !important; font-weight: 900 !important; cursor: pointer; color: white !important; line-height: 1.2; }
+	.btn-v { background-color: #22c55e; }
+	.btn-v:hover { background-color: #16a34a; }
+	.btn-x { background-color: #ff7b89; }
+	.btn-x:hover { background-color: #ff7b89; }
+	.no-class-text { display: flex; align-items: center; justify-content: center; height: 100%; color: #ff7b89; font-size: 0.95rem; font-weight: 900; background-color: white; }
+	.slot-cell.restricted { background-color: white; }
 	.loading-state { text-align: center; padding: 3rem; }
 	.spin { animation: spin 1s linear infinite; display: inline-block; }
 	@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

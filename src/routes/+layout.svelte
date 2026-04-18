@@ -85,6 +85,8 @@
 		background-color: var(--header-bg);
 		color: white;
 		padding: 2.5rem 1.5rem 1.5rem 1.5rem;
+		position: relative;
+		z-index: 10;
 	}
 
 	.header-inner {
@@ -95,33 +97,38 @@
 		justify-content: center;
 		position: relative;
 		gap: 3rem;
+		min-height: 100px;
 	}
 
 	.top-left-actions {
 		position: absolute;
 		left: 0;
-		top: -1rem;
+		top: 0;
 		display: flex;
 		gap: 0.5rem;
+		z-index: 50;
+		pointer-events: auto;
 	}
 
 	.top-btn {
 		display: flex;
 		align-items: center;
 		gap: 0.3rem;
-		padding: 0.25rem 0.7rem;
+		padding: 0.3rem 0.8rem;
 		border-radius: 50px;
-		font-size: 0.75rem;
+		font-size: 0.8rem;
 		font-weight: 800;
 		text-decoration: none;
 		color: white;
-		background: rgba(255, 255, 255, 0.1);
+		background: rgba(255, 255, 255, 0.15);
 		border: 1px solid rgba(255, 255, 255, 0.2);
 		transition: all 0.2s;
+		cursor: pointer;
 	}
 
 	.top-btn:hover {
-		background: rgba(255, 255, 255, 0.2);
+		background: rgba(255, 255, 255, 0.25);
+		transform: translateY(-1px);
 	}
 
 	.top-btn.admin { border-color: #94a3b8; }
@@ -133,6 +140,7 @@
 		align-items: center;
 		text-align: center;
 		gap: 0.5rem;
+		z-index: 5;
 	}
 
 	.header-link {
@@ -204,7 +212,8 @@
 	.auth-box {
 		position: absolute;
 		right: 0;
-		top: -1rem;
+		top: 0;
+		z-index: 50;
 	}
 
 	.user-info {

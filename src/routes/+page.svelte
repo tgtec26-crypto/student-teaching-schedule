@@ -98,10 +98,7 @@
 	let checking = $state(true);
 
 	$effect(() => {
-		if ($user && $userRole !== null) {
-			if ($isSupervisor && !$isAdmin) goto('/supervisor');
-			else checking = false;
-		} else if (!$user) checking = false;
+		checking = false;
 	});
 
 	$effect(() => {
@@ -156,12 +153,36 @@
 			if (applications.filter(a => a.date === targetDate && a.classId === classId && a.period === period).length >= maxApplicants) return alert('정원이 초과되었습니다.');
 			if (confirm(`${targetDate} ${period}교시 신청하시겠습니까?`)) {
 				const s = studentData[$user.email];
-				const settings = await getDoc(doc(db, 'teacher_settings', teacher));
-				let isAuto = settings.exists() ? settings.data().autoApprove : false;
-				if (['2026-05-06', '2026-05-07', '2026-05-08'].includes(targetDate)) isAuto = true;
-				await addDoc(collection(db, 'observation_applications'), { date: targetDate, classId, period, subject, teacher, applicantEmail: $user.email, applicantName: s ? s.name : $user.displayName, applicantSubject: s ? s.subject : '미정', status: isAuto ? 'APPROVED' : 'PENDING', timestamp: Timestamp.now() });
+				
+				// 승인 상태 결정 로직
+				let status = 'PENDING'; // 기본값은 대기
+				
+				if (['2026-05-06', '2026-05-07', '2026-05-08'].includes(targetDate)) {
+					// 1. 5월 6, 7, 8일은 무조건 자동 승인
+					status = 'APPROVED';
+				} else {
+					// 2. 11일 이후부터는 교사의 설정을 확인
+					const settingsSnap = await getDoc(doc(db, 'teacher_settings', teacher));
+					if (settingsSnap.exists() && settingsSnap.data().autoApprove === true) {
+						status = 'APPROVED';
+					}
+				}
+
+				await addDoc(collection(db, 'observation_applications'), { 
+					date: targetDate, 
+					classId, 
+					period, 
+					subject, 
+					teacher, 
+					applicantEmail: $user.email, 
+					applicantName: s ? s.name : $user.displayName, 
+					applicantSubject: s ? s.subject : '미정', 
+					status: status, 
+					timestamp: Timestamp.now() 
+				});
+
 				const url = teacherWebhooks[teacher];
-				if (url) fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ text: `🔔 새 신청: [${s?.subject || '미정'}] ${s?.name || $user.displayName}\n일시: ${targetDate} ${period}교시` }) });
+				if (url) fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ text: `🔔 새 신청: [${s?.subject || '미정'}] ${s?.name || $user.displayName}\n일시: ${targetDate} ${period}교시\n상태: ${status === 'APPROVED' ? '자동 승인됨' : '승인 대기 중'}` }) });
 			}
 		}
 	}
@@ -199,8 +220,8 @@
 		</nav>
 
 		<div class="content-container">
-			<!-- Attached Dual Navigation -->
-			{#if viewMode !== 'teacher' || (viewMode === 'teacher' && selectedTeacher)}
+			<!-- Attached Dual Navigation (Show only in Grade and My views) -->
+			{#if viewMode !== 'teacher'}
 				<div class="centered-nav-unit">
 					<div class="nav-unit-box">
 						<div class="control-group">
@@ -235,13 +256,20 @@
 								{/each}
 							</div>
 						{:else}
-							<div class="view-header">
-								<button class="back-btn" onclick={() => selectedTeacher = null}><ChevronLeft size={18} /> 목록</button>
-								<h3>{selectedTeacher} 선생님 시간표</h3>
+							<div class="view-header centered">
+								<div class="view-header-top">
+									<button class="back-btn" onclick={() => selectedTeacher = null}><ChevronLeft size={18} /> 목록</button>
+									<h3 class="teacher-title">{selectedTeacher} 선생님 시간표</h3>
+								</div>
+								<div class="nav-unit-box mini">
+									<button class="arrow" disabled={currentWeekIndex === 0} onclick={prevWeek}><ChevronLeft size={16} /></button>
+									<span class="val week">{currentWeekIndex + 1}주차</span>
+									<button class="arrow" disabled={currentWeekIndex === 3} onclick={nextWeek}><ChevronRight size={16} /></button>
+								</div>
 							</div>
 							<div class="timetable-wrapper">
 								<table class="timetable weekly">
-									<thead><tr><th class="corner-tl">교시</th>{#each weekDates as d, i}<th class={i === 4 ? 'corner-tr' : ''}>{weekDays[i]} ({d.split('-').slice(1).join('/')})</th>{/each}</tr></thead>
+									<thead><tr><th class="corner-tl sticky-col">교시</th>{#each weekDates as d, i}<th class={i === 4 ? 'corner-tr' : ''}>{weekDays[i]} ({d.split('-').slice(1).join('/')})</th>{/each}</tr></thead>
 									<tbody>
 										{#each periods as p}
 											<tr>
@@ -258,7 +286,15 @@
 															{:else}
 																<button class="slot-btn {isMine ? 'mine' : ''}" onclick={() => toggleApplication(d, classId, p, slot.subject, selectedTeacher!)}>
 																	<div class="slot-main"><span class="subject" style="background-color: {getSubjectColor(slot.subject)}">{slot.subject}</span><span class="class">{classId.substring(0,1)}-{parseInt(classId.substring(2))}반</span></div>
-																	<div class="slot-footer"><Users size={12} /> {apps.length}/5 {#if isMine}<span class="mine-tag">O</span>{/if}</div>
+																	<div class="slot-footer">
+																		<Users size={12} /> {apps.length}/5 
+																		{#if isMine}
+																			{@const myApp = apps.find(a => a.applicantEmail === $user?.email)}
+																			<span class="status-tag {myApp?.status || 'PENDING'}">
+																				{myApp?.status === 'APPROVED' ? '확정' : '대기'}
+																			</span>
+																		{/if}
+																	</div>
 																</button>
 															{/if}
 														{/if}
@@ -275,7 +311,7 @@
 							<table class="timetable">
 								<thead>
 									<tr>
-										<th class="corner-tl">교시</th>
+										<th class="corner-tl sticky-col">교시</th>
 										{#each Object.keys(timetableData).filter(id => id.startsWith(selectedGrade.toString())) as cid, i}
 											<th class={i === Object.keys(timetableData).filter(id => id.startsWith(selectedGrade.toString())).length - 1 ? 'corner-tr' : ''}>{parseInt(cid.substring(2))}반</th>
 										{/each}
@@ -312,7 +348,7 @@
 					{:else if viewMode === 'my'}
 						<div class="timetable-wrapper">
 							<table class="timetable weekly">
-								<thead><tr><th class="corner-tl">교시</th>{#each weekDates as d, i}<th class={i === 4 ? 'corner-tr' : ''}>{weekDays[i]} ({d.split('-').slice(1).join('/')})</th>{/each}</tr></thead>
+								<thead><tr><th class="corner-tl sticky-col">교시</th>{#each weekDates as d, i}<th class={i === 4 ? 'corner-tr' : ''}>{weekDays[i]} ({d.split('-').slice(1).join('/')})</th>{/each}</tr></thead>
 								<tbody>
 									{#each periods as p}
 										<tr>
@@ -388,26 +424,80 @@
 	.teacher-name { font-weight: 800; font-size: 1.1rem; color: #1e293b; }
 
 	/* Timetable Refinement */
-	.view-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
-	.back-btn { padding: 0.4rem 0.8rem; background: #f1f5f9; border: none; border-radius: 8px; font-weight: 800; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
-	.timetable-wrapper { background: white; border-radius: 20px; overflow-x: auto; padding: 1rem; border: 1px solid #eef2f6; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
-	.timetable { width: 100%; border-collapse: separate; border-spacing: 0; }
-	.timetable th { background: #283151; color: white; padding: 0.8rem; font-weight: 900; font-size: 0.95rem; text-align: center; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
-	
-	.corner-tl { border-top-left-radius: 12px !important; }
-	.corner-tr { border-top-right-radius: 12px !important; }
+	.view-header.centered { display: flex; flex-direction: column; align-items: center; gap: 0.8rem; margin-bottom: 1.2rem; margin-top: 1rem; position: relative; }
+	.view-header-top { display: flex; align-items: center; justify-content: center; width: 100%; position: relative; }
+	.back-btn { position: absolute; left: 0; padding: 0.4rem 0.8rem; background: #f1f5f9; border: none; border-radius: 8px; font-weight: 800; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
+	.teacher-title { font-size: 1.5rem; font-weight: 900; color: #1e293b; margin: 0; }
+	.nav-unit-box.mini { padding: 0.2rem; border-radius: 50px; }
+	.nav-unit-box.mini .arrow { width: 28px; height: 28px; }
+	.nav-unit-box.mini .val { font-size: 0.9rem; min-width: 50px; }
 
-	.timetable td { border: 1px solid #f1f5f9; height: 85px; vertical-align: top; width: 150px; }
-	.sticky-col { position: sticky; left: 0; background: #283151 !important; width: 45px !important; min-width: 45px !important; z-index: 10; border-right: 2px solid #0f172a !important; }
-	.period-cell { display: flex; align-items: center; justify-content: center; height: 100%; font-weight: 900; font-size: 1.2rem; color: white; }
+	.timetable-wrapper { background: white; border-radius: 20px; overflow-x: auto; padding: 1.5rem; border: 1px solid #eef2f6; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+	.timetable { border-collapse: separate; border-spacing: 6px 0; width: auto; table-layout: fixed; margin: 0 auto; }
+	.timetable th { 
+		background: #283151; 
+		color: white; 
+		padding: 0.5rem; 
+		font-weight: 900; 
+		font-size: 0.95rem; 
+		text-align: center; 
+		white-space: nowrap; 
+		width: 170px;
+		border-radius: 12px 12px 0 0; /* 헤더 개별 상단 라운드 */
+		border: none;
+	}
+	
+	.corner-tl, .corner-tr { border-radius: 12px 12px 0 0 !important; }
+
+	.timetable td { border: 1px solid #cbd5e1; height: 85px; vertical-align: top; width: 170px; min-width: 170px; max-width: 170px; background: white; }
+	
+	/* 교시 셀 너비 40px로 통일 */
+	.sticky-col { 
+		position: sticky; 
+		left: 0; 
+		background: #283151 !important; 
+		width: 40px !important; 
+		min-width: 40px !important; 
+		max-width: 40px !important; 
+		z-index: 10; 
+		border-radius: 0 !important; /* 교시 숫자는 라운드 제외하거나 헤더만 적용 */
+		box-sizing: border-box;
+		padding: 0 !important;
+		border: none !important;
+	}
+	
+	th.sticky-col { border-radius: 12px 12px 0 0 !important; } /* 교시 헤더만 라운드 */
+	
+	.period-cell { 
+		display: flex; 
+		align-items: center; 
+		justify-content: center; 
+		height: 100%; 
+		font-weight: 900; 
+		font-size: 1rem; 
+		color: white; 
+		width: 100%;
+	}
+	
 	.slot-cell.restricted { background: #f8fafc; }
 	.res-msg { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.75rem; color: #cbd5e1; font-weight: 800; gap: 0.2rem; }
 	.slot-btn { width: 100%; height: 100%; border: none; background: none; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.5rem; cursor: pointer; text-align: left; }
 	.slot-btn.mine { background: #f0fdf4; border: 2px solid #22c55e; border-radius: 10px; }
+	.slot-main { display: flex; justify-content: space-between; align-items: center; width: 100%; }
 	.subject { font-size: 0.75rem; font-weight: 900; padding: 0.15rem 0.5rem; border-radius: 4px; width: fit-content; }
-	.teacher, .class { font-size: 0.85rem; font-weight: 700; color: #64748b; }
+	.teacher, .class { font-size: 0.85rem; font-weight: 700; color: #64748b; text-align: right; }
 	.slot-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; font-weight: 700; color: #94a3b8; }
-	.mine-tag { background: #22c55e; color: white; font-size: 0.6rem; padding: 0.1rem 0.3rem; border-radius: 3px; }
+	
+	.status-tag { 
+		font-size: 0.65rem; 
+		padding: 0.15rem 0.4rem; 
+		border-radius: 4px; 
+		font-weight: 900; 
+		color: white; 
+	}
+	.status-tag.PENDING { background-color: #f59e0b; } /* 주황색 (대기) */
+	.status-tag.APPROVED { background-color: #22c55e; } /* 초록색 (확정) */
+	
 	.my-slot-card { height: 100%; padding: 0.8rem; background: #f8fafc; border-radius: 10px; display: flex; flex-direction: column; gap: 0.5rem; }
 
 	.loading-state, .loading-screen { text-align: center; padding: 5rem; color: #64748b; }
@@ -417,5 +507,7 @@
 
 	@media (max-width: 1000px) {
 		.integrated-nav-row { flex-direction: column; padding: 1rem; gap: 1rem; }
+		.back-btn { position: static; margin-bottom: 0.5rem; }
+		.view-header-top { flex-direction: column; }
 	}
 </style>
