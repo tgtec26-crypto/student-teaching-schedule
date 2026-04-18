@@ -256,15 +256,19 @@
 								{/each}
 							</div>
 						{:else}
-							<div class="view-header centered">
-								<div class="view-header-top">
-									<button class="back-btn" onclick={() => selectedTeacher = null}><ChevronLeft size={18} /> 목록</button>
-									<h3 class="teacher-title">{selectedTeacher} 선생님 시간표</h3>
+							<div class="view-header-grid">
+								<div class="h-left">
+									<button class="back-btn-static" onclick={() => selectedTeacher = null}><ChevronLeft size={18} /> 목록</button>
 								</div>
-								<div class="nav-unit-box mini">
-									<button class="arrow" disabled={currentWeekIndex === 0} onclick={prevWeek}><ChevronLeft size={16} /></button>
-									<span class="val week">{currentWeekIndex + 1}주차</span>
-									<button class="arrow" disabled={currentWeekIndex === 3} onclick={nextWeek}><ChevronRight size={16} /></button>
+								<div class="h-center">
+									<div class="nav-unit-box mini">
+										<button class="arrow" disabled={currentWeekIndex === 0} onclick={prevWeek}><ChevronLeft size={16} /></button>
+										<span class="val week">{currentWeekIndex + 1}주차</span>
+										<button class="arrow" disabled={currentWeekIndex === 3} onclick={nextWeek}><ChevronRight size={16} /></button>
+									</div>
+								</div>
+								<div class="h-right">
+									<h3 class="teacher-title-static">{selectedTeacher} 선생님 시간표</h3>
 								</div>
 							</div>
 							<div class="timetable-wrapper">
@@ -424,11 +428,15 @@
 	.teacher-name { font-weight: 800; font-size: 1.1rem; color: #1e293b; }
 
 	/* Timetable Refinement */
-	.view-header.centered { display: flex; flex-direction: column; align-items: center; gap: 0.8rem; margin-bottom: 1.2rem; margin-top: 1rem; position: relative; }
-	.view-header-top { display: flex; align-items: center; justify-content: center; width: 100%; position: relative; }
-	.back-btn { position: absolute; left: 0; padding: 0.4rem 0.8rem; background: #f1f5f9; border: none; border-radius: 8px; font-weight: 800; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
-	.teacher-title { font-size: 1.5rem; font-weight: 900; color: #1e293b; margin: 0; }
-	.nav-unit-box.mini { padding: 0.2rem; border-radius: 50px; }
+	.view-header-grid { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%; margin-bottom: 0.8rem; margin-top: 0.5rem; gap: 1rem; }
+	.h-left { display: flex; justify-content: flex-start; }
+	.h-center { display: flex; justify-content: center; }
+	.h-right { display: flex; justify-content: flex-end; }
+
+	.back-btn-static { padding: 0.4rem 0.8rem; background: #f1f5f9; border: none; border-radius: 8px; font-weight: 800; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
+	.teacher-title-static { font-size: 1.4rem; font-weight: 900; color: #1e293b; margin: 0; text-align: right; }
+	
+	.nav-unit-box.mini { padding: 0.25rem; border-radius: 50px; background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
 	.nav-unit-box.mini .arrow { width: 28px; height: 28px; }
 	.nav-unit-box.mini .val { font-size: 0.9rem; min-width: 50px; }
 
