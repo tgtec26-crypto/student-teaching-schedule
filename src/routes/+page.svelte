@@ -98,6 +98,9 @@
 	let checking = $state(true);
 
 	$effect(() => {
+		if ($user && $isSupervisor && !$isAdmin) {
+			goto('/supervisor');
+		}
 		checking = false;
 	});
 
@@ -145,6 +148,7 @@
 	// 4. Actions
 	async function toggleApplication(targetDate: string, classId: string, period: string, subject: string, teacher: string) {
 		if (!$user) return alert('로그인이 필요합니다.');
+		if ($isSupervisor && !$isAdmin) return alert('지도교사는 참관 신청을 할 수 없습니다.');
 		if (targetDate === '2026-05-04' || targetDate === '2026-05-05') return alert('해당 날짜는 신청 불가일입니다.');
 		const existing = applications.find(a => a.applicantEmail === $user.email && a.date === targetDate && a.classId === classId && a.period === period);
 		if (existing) { if (confirm('신청을 취소하시겠습니까?')) await deleteDoc(doc(db, 'observation_applications', existing.id)); }
