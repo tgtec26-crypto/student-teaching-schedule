@@ -182,7 +182,30 @@
 				});
 
 				const url = teacherWebhooks[teacher];
-				if (url) fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ text: `🔔 새 신청: [${s?.subject || '미정'}] ${s?.name || $user.displayName}\n일시: ${targetDate} ${period}교시\n상태: ${status === 'APPROVED' ? '자동 승인됨' : '승인 대기 중'}` }) });
+				if (url) {
+					const statusText = status === 'APPROVED' ? '✅ 자동 승인 완료' : '⏳ 승인 대기 중';
+					const statusGuide = status === 'APPROVED' 
+						? '교사님의 설정에 따라 자동으로 승인되었습니다.' 
+						: '신청이 접수되었습니다. 지도교사 페이지에서 승인 여부를 결정해 주세요.';
+					
+					const message = [
+						`🔔 *새로운 참관 신청 알림 (${status === 'APPROVED' ? '자동 승인됨' : '대기'})*`,
+						'',
+						`• *신청자*: [${s?.subject || '미정'}] ${s?.name || $user.displayName}`,
+						`• *일시*: ${targetDate} ${period}교시`,
+						`• *과목*: ${subject}`,
+						`• *상태*: ${statusText}`,
+						'',
+						statusGuide,
+						`🔗 [지도 교사 승인 페이지 바로가기](https://student-teaching-schedule.vercel.app/supervisor)`
+					].join('\n');
+
+					fetch(url, { 
+						method: 'POST', 
+						mode: 'no-cors', 
+						body: JSON.stringify({ text: message }) 
+					});
+				}
 			}
 		}
 	}

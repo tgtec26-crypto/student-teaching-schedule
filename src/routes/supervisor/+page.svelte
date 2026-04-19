@@ -144,14 +144,55 @@
 	async function approveApplication(e: Event, appId: string) {
 		e.stopPropagation(); if (approvingId) return;
 		approvingId = appId;
-		await updateDoc(doc(db, 'observation_applications', appId), { status: 'APPROVED' });
+		
+		// 알림을 위한 데이터 미리 가져오기
+		const appRef = doc(db, 'observation_applications', appId);
+		const appSnap = await getDoc(appRef);
+		
+		await updateDoc(appRef, { status: 'APPROVED' });
+		
+		if (appSnap.exists()) {
+			const data = appSnap.data();
+			const url = teacherWebhooks[selectedTeacher];
+			if (url) {
+				const message = [
+					`📢 *참관 신청 처리 결과*`,
+					'',
+					`• *신청자*: ${data.applicantName}`,
+					`• *일시*: ${data.date} ${data.period}교시`,
+					`• *결과*: ✅ *승인 처리됨*`
+				].join('\n');
+				fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ text: message }) });
+			}
+		}
+		
 		approvingId = null;
 	}
 
 	async function declineApplication(e: Event, appId: string) {
 		e.stopPropagation(); if (approvingId || !confirm('거부하시겠습니까?')) return;
 		approvingId = appId;
-		await updateDoc(doc(db, 'observation_applications', appId), { status: 'DECLINED' });
+		
+		const appRef = doc(db, 'observation_applications', appId);
+		const appSnap = await getDoc(appRef);
+		
+		await updateDoc(appRef, { status: 'DECLINED' });
+		
+		if (appSnap.exists()) {
+			const data = appSnap.data();
+			const url = teacherWebhooks[selectedTeacher];
+			if (url) {
+				const message = [
+					`📢 *참관 신청 처리 결과*`,
+					'',
+					`• *신청자*: ${data.applicantName}`,
+					`• *일시*: ${data.date} ${data.period}교시`,
+					`• *결과*: ❌ *거부 처리됨*`
+				].join('\n');
+				fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ text: message }) });
+			}
+		}
+		
 		approvingId = null;
 	}
 
