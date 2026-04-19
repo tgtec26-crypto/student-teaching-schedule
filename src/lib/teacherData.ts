@@ -47,10 +47,16 @@ export const teacherMetadata: Record<string, { name: string; subject: string }> 
 	'kjm3542@snu-g.ms.kr': { name: '강지민', subject: '스포츠' }
 };
 
+import { studentData } from './studentData';
+
 export function getStandardizedName(email: string, displayName: string | null): string {
-	const meta = teacherMetadata[email];
-	if (meta) {
-		return meta.subject ? `${meta.name} (${meta.subject})` : meta.name;
+	const tMeta = teacherMetadata[email];
+	if (tMeta) {
+		return tMeta.subject ? `${tMeta.name} (${tMeta.subject})` : tMeta.name;
+	}
+	const sMeta = studentData[email];
+	if (sMeta) {
+		return sMeta.subject ? `${sMeta.name} (${sMeta.subject})` : sMeta.name;
 	}
 	return displayName || '사용자';
 }
