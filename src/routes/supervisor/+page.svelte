@@ -145,7 +145,6 @@
 		e.stopPropagation(); if (approvingId) return;
 		approvingId = appId;
 		
-		// 알림을 위한 데이터 미리 가져오기
 		const appRef = doc(db, 'observation_applications', appId);
 		const appSnap = await getDoc(appRef);
 		
@@ -153,6 +152,8 @@
 		
 		if (appSnap.exists()) {
 			const data = appSnap.data();
+			
+			// 선생님 구글챗 알림
 			const url = teacherWebhooks[selectedTeacher];
 			if (url) {
 				const message = [
@@ -164,6 +165,22 @@
 				].join('\n');
 				fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ text: message }) });
 			}
+
+			// 실습생 이메일 알림 (GAS)
+			const gasUrl = 'https://script.google.com/macros/s/AKfycby2kNaGAvgtD36spyTvTlsxwWpFKow5QjiPrIuhJJDUZuLaBxr8iagIzTYhhCnUHORg/exec';
+			fetch(gasUrl, {
+				method: 'POST',
+				mode: 'no-cors',
+				body: JSON.stringify({
+					email: data.applicantEmail,
+					name: data.applicantName,
+					date: data.date,
+					period: data.period,
+					subject: data.subject,
+					teacher: data.teacher,
+					status: 'APPROVED'
+				})
+			});
 		}
 		
 		approvingId = null;
@@ -180,6 +197,8 @@
 		
 		if (appSnap.exists()) {
 			const data = appSnap.data();
+			
+			// 선생님 구글챗 알림
 			const url = teacherWebhooks[selectedTeacher];
 			if (url) {
 				const message = [
@@ -191,6 +210,22 @@
 				].join('\n');
 				fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ text: message }) });
 			}
+
+			// 실습생 이메일 알림 (GAS)
+			const gasUrl = 'https://script.google.com/macros/s/AKfycby2kNaGAvgtD36spyTvTlsxwWpFKow5QjiPrIuhJJDUZuLaBxr8iagIzTYhhCnUHORg/exec';
+			fetch(gasUrl, {
+				method: 'POST',
+				mode: 'no-cors',
+				body: JSON.stringify({
+					email: data.applicantEmail,
+					name: data.applicantName,
+					date: data.date,
+					period: data.period,
+					subject: data.subject,
+					teacher: data.teacher,
+					status: 'DECLINED'
+				})
+			});
 		}
 		
 		approvingId = null;
@@ -350,12 +385,12 @@
 	.btn-toggle-restriction.is-available:hover { background-color: #dcfce7; }
 	.btn-toggle-restriction.is-restricted { background-color: #fff5f5; border-color: #fecaca; color: #ff7b89; }
 	.btn-toggle-restriction.is-restricted:hover { background-color: #fee2e2; }
-	.applicant-list { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.5rem; border-top: 1px dashed #cbd5e1; padding-top: 0.5rem; }
-	.app-item { font-size: 0.8rem; font-weight: 800; background: rgba(255,255,255,0.8); padding: 0.3rem 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e2e8f0; }
-	.app-item.APPROVED { color: #166534; background: #dcfce7; border-color: #bbf7d0; }
-	.app-item.DECLINED { color: #991b1b; background: #fee2e2; opacity: 0.6; }
-	.app-btns { display: flex; gap: 4px; }
-	.btn-v, .btn-x { border: none; border-radius: 4px; padding: 4px 10px !important; font-size: 0.85rem !important; font-weight: 900 !important; cursor: pointer; color: white !important; line-height: 1.2; }
+	.applicant-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.2rem 0.4rem; margin-top: 0.5rem; border-top: 1px dashed #cbd5e1; padding-top: 0.5rem; }
+	.app-item { font-size: 0.85rem; font-weight: 600; color: #000; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 0.2rem; text-align: center; line-height: 1.1; }
+	.app-item.DECLINED { opacity: 0.4; text-decoration: line-through; }
+	.app-name { word-break: keep-all; }
+	.app-btns { display: flex; gap: 2px; width: 100%; justify-content: center; }
+	.btn-v, .btn-x { border: none; border-radius: 4px; padding: 2px 0 !important; font-size: 0.65rem !important; font-weight: 900 !important; cursor: pointer; color: white !important; line-height: 1.2; flex: 1; text-align: center; }
 	.btn-v { background-color: #22c55e; }
 	.btn-v:hover { background-color: #16a34a; }
 	.btn-x { background-color: #ff7b89; }
