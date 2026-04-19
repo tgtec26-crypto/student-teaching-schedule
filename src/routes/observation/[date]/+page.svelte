@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { studentData } from '$lib/studentData';
+	import { teacherMetadata } from '$lib/teacherData';
 	import { teacherWebhooks } from '$lib/teacherWebhooks';
 	import { page } from '$app/state';
 	import { user, db, isStudent, isAdmin } from '$lib/firebase';
@@ -249,8 +250,11 @@
 				let isAutoApprove = settingsSnap.exists() ? settingsSnap.data().autoApprove : false;
 				if (['2026-05-06', '2026-05-07', '2026-05-08'].includes(targetDate)) isAutoApprove = true;
 
+				const tEntry = Object.entries(teacherMetadata).find(([email, meta]) => meta.name === teacher);
+				const teacherEmail = tEntry ? tEntry[0] : null;
+
 				await addDoc(collection(db, 'observation_applications'), {
-					date: targetDate, classId, period, subject, teacher,
+					date: targetDate, classId, period, subject, teacher, teacherEmail,
 					applicantEmail: $user.email, applicantName: aName, applicantSubject: aSubject,
 					status: isAutoApprove ? 'APPROVED' : 'PENDING', timestamp: Timestamp.now()
 				});
@@ -442,7 +446,7 @@
 											{#if isTeacherRestricted || isDisabledDate}
 												<div class="slot-restricted-msg"><Lock size={12} /> {isDisabledDate ? '신청 불가일' : '참관 불가'}</div>
 											{:else}
-												<div class="slot-display {isMine ? 'mine' : ''} {isFull && !isMine ? 'full' : ''}">
+												<button class="slot-btn {isMine ? 'mine' : ''} {isFull && !isMine ? 'full' : ''}" onclick={() => toggleApplication(d, classId, period, slot.subject, selectedTeacher!)}>
 													<div class="slot-row">
 														<div class="slot-info-main">
 															<span class="subject" style="background-color: {getSubjectColor(slot.subject)}">{slot.subject}</span>
@@ -455,7 +459,7 @@
 															{apps.find(a => a.applicantEmail === $user?.email)?.status === 'APPROVED' ? '신청완료' : '승인대기'}
 														</span>
 													{/if}
-												</div>
+												</button>
 											{/if}
 										{:else if isRestricted}<div class="no-class restricted">수업 없음</div>
 										{:else}<div class="no-class">-</div>{/if}

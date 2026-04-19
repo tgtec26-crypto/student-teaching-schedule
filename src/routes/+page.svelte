@@ -17,6 +17,7 @@
 	} from 'lucide-svelte';
 	import { timetableData } from '$lib/timetableData';
 	import { studentData } from '$lib/studentData';
+	import { teacherMetadata } from '$lib/teacherData';
 	import { teacherWebhooks } from '$lib/teacherWebhooks';
 	import { goto } from '$app/navigation';
 	import {
@@ -172,12 +173,16 @@
 					}
 				}
 
+				const tEntry = Object.entries(teacherMetadata).find(([email, meta]) => meta.name === teacher);
+				const teacherEmail = tEntry ? tEntry[0] : null;
+
 				await addDoc(collection(db, 'observation_applications'), { 
 					date: targetDate, 
 					classId, 
 					period, 
 					subject, 
 					teacher, 
+					teacherEmail,
 					applicantEmail: $user.email, 
 					applicantName: s ? s.name : $user.displayName, 
 					applicantSubject: s ? s.subject : '미정', 
@@ -315,7 +320,7 @@
 														{#if slot}
 															{#if isRes}<div class="res-msg"><Lock size={12} /> { (d === '2026-05-04' || d === '2026-05-05') ? '불가' : '차단'}</div>
 															{:else}
-																<div class="slot-display {isMine ? 'mine' : ''}">
+																<button class="slot-btn {isMine ? 'mine' : ''}" onclick={() => toggleApplication(d, classId, p, slot.subject, selectedTeacher!)}>
 																	<div class="slot-main"><span class="subject" style="background-color: {getSubjectColor(slot.subject)}">{slot.subject}</span><span class="class">{classId.substring(0,1)}-{parseInt(classId.substring(2))}반</span></div>
 																	<div class="slot-footer">
 																		<Users size={12} /> {apps.length}/5 
@@ -326,7 +331,7 @@
 																			</span>
 																		{/if}
 																	</div>
-																</div>
+																</button>
 															{/if}
 														{/if}
 													</td>

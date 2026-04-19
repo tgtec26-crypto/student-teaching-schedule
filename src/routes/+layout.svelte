@@ -2,7 +2,7 @@
 	import '../app.css';
 	import { page } from '$app/state';
 	import { user, login, logout, isAdmin, isSupervisor } from '$lib/firebase';
-	import { LogIn, LogOut, User as UserIcon, ArrowLeft, ShieldCheck, UserCheck } from 'lucide-svelte';
+	import { LogIn, LogOut, User as UserIcon, ArrowLeft, ShieldCheck, UserCheck, Bell } from 'lucide-svelte';
 
 	let { children } = $props();
 
@@ -60,6 +60,9 @@
 		<div class="auth-box">
 			{#if $user}
 				<div class="user-info">
+					<a href="/settings" class="btn-settings" title="알림 설정">
+						<Bell size={18} />
+					</a>
 					<UserIcon size={18} />
 					<span class="user-name">{$user.displayName}</span>
 					<button class="btn-logout" onclick={logout} title="로그아웃">
@@ -240,6 +243,20 @@
 		align-items: center;
 		padding: 0.2rem;
 		opacity: 0.7;
+	}
+
+	.btn-settings {
+		color: white;
+		display: flex;
+		align-items: center;
+		padding: 0.2rem;
+		opacity: 0.8;
+		transition: all 0.2s;
+	}
+
+	.btn-settings:hover {
+		opacity: 1;
+		transform: scale(1.1);
 	}
 
 	.btn-login {
