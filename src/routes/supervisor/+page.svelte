@@ -376,7 +376,7 @@
 	.sticky-col { position: sticky; left: 0; background: #283151 !important; width: 40px !important; min-width: 40px !important; max-width: 40px !important; color: white; z-index: 10; padding: 0 !important; border: none !important; }
 	th.sticky-col { border-radius: 12px 12px 0 0 !important; }
 	.period-cell { display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: 900; font-size: 1.1rem; color: white; }
-	.slot-content { height: 100%; padding: 0.3rem; border-radius: 6px; position: relative; }
+	.slot-content { height: 100%; padding: 0.3rem; border: 2px solid transparent; border-radius: 6px; position: relative; }
 	.slot-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
 	.subject { font-size: 0.85rem; font-weight: 900; padding: 0.2rem 0.4rem; border-radius: 4px; }
 	.class-label { font-size: 0.95rem; color: #1e293b; font-weight: 900; }

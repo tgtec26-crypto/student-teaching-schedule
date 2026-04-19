@@ -315,7 +315,7 @@
 														{#if slot}
 															{#if isRes}<div class="res-msg"><Lock size={12} /> { (d === '2026-05-04' || d === '2026-05-05') ? '불가' : '차단'}</div>
 															{:else}
-																<button class="slot-btn {isMine ? 'mine' : ''}" onclick={() => toggleApplication(d, classId, p, slot.subject, selectedTeacher!)}>
+																<div class="slot-display {isMine ? 'mine' : ''}">
 																	<div class="slot-main"><span class="subject" style="background-color: {getSubjectColor(slot.subject)}">{slot.subject}</span><span class="class">{classId.substring(0,1)}-{parseInt(classId.substring(2))}반</span></div>
 																	<div class="slot-footer">
 																		<Users size={12} /> {apps.length}/5 
@@ -326,7 +326,7 @@
 																			</span>
 																		{/if}
 																	</div>
-																</button>
+																</div>
 															{/if}
 														{/if}
 													</td>
@@ -516,8 +516,12 @@
 	
 	.slot-cell.restricted { background: #f8fafc; }
 	.res-msg { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.75rem; color: #cbd5e1; font-weight: 800; gap: 0.2rem; }
-	.slot-btn { width: 100%; height: 100%; border: none; background: none; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.5rem; cursor: pointer; text-align: left; }
-	.slot-btn.mine { background: #f0fdf4; border: 2px solid #22c55e; border-radius: 10px; }
+	.slot-btn, .slot-display { width: 100%; height: 100%; border: 2px solid transparent; background: none; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.5rem; text-align: left; position: relative; border-radius: 10px; }
+	.slot-btn { cursor: pointer; transition: all 0.2s ease-in-out; }
+	.slot-btn:hover { background: white; border-color: #2563eb; transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); z-index: 10; }
+	.slot-display { cursor: default; }
+	.slot-btn.mine, .slot-display.mine { background: #f0fdf4; border: 2px solid #22c55e; border-radius: 10px; }
+	.slot-btn.mine:hover { border-color: #2563eb; background: #f0fdf4; }
 	.slot-main { display: flex; justify-content: space-between; align-items: center; width: 100%; }
 	.subject { font-size: 0.75rem; font-weight: 900; padding: 0.15rem 0.5rem; border-radius: 4px; width: fit-content; }
 	.teacher, .class { font-size: 0.85rem; font-weight: 700; color: #64748b; text-align: right; }
@@ -533,7 +537,7 @@
 	.status-tag.PENDING { background-color: #f59e0b; } /* 주황색 (대기) */
 	.status-tag.APPROVED { background-color: #22c55e; } /* 초록색 (확정) */
 	
-	.my-slot-card { height: 100%; padding: 0.8rem; background: #f8fafc; border-radius: 10px; display: flex; flex-direction: column; gap: 0.5rem; }
+	.my-slot-card { height: 100%; padding: 0.8rem; background: #f8fafc; border: 2px solid transparent; border-radius: 10px; display: flex; flex-direction: column; gap: 0.5rem; }
 
 	.loading-state, .loading-screen { text-align: center; padding: 5rem; color: #64748b; }
 	.login-screen { text-align: center; padding: 5rem 2rem; margin-top: 3rem; }

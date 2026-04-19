@@ -442,7 +442,7 @@
 											{#if isTeacherRestricted || isDisabledDate}
 												<div class="slot-restricted-msg"><Lock size={12} /> {isDisabledDate ? '신청 불가일' : '참관 불가'}</div>
 											{:else}
-												<button class="slot-btn {isMine ? 'mine' : ''} {isFull && !isMine ? 'full' : ''}" onclick={() => toggleApplication(d, classId, period, slot.subject, selectedTeacher!)}>
+												<div class="slot-display {isMine ? 'mine' : ''} {isFull && !isMine ? 'full' : ''}">
 													<div class="slot-row">
 														<div class="slot-info-main">
 															<span class="subject" style="background-color: {getSubjectColor(slot.subject)}">{slot.subject}</span>
@@ -455,7 +455,7 @@
 															{apps.find(a => a.applicantEmail === $user?.email)?.status === 'APPROVED' ? '신청완료' : '승인대기'}
 														</span>
 													{/if}
-												</button>
+												</div>
 											{/if}
 										{:else if isRestricted}<div class="no-class restricted">수업 없음</div>
 										{:else}<div class="no-class">-</div>{/if}
@@ -542,9 +542,12 @@
 	.slot-cell.restricted { background: #f1f5f9; }
 	.slot-restricted-msg { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; font-size: 0.7rem; font-weight: 800; gap: 0.2rem; text-align: center; }
 	
-	.slot-btn { width: 100%; height: 100%; border: none; background: none; padding: 0.4rem; display: flex; flex-direction: column; text-align: left; cursor: pointer; transition: all 0.15s; gap: 0.3rem; }
-	.slot-btn:hover { background: #f8fafc; }
-	.slot-btn.mine { background: #f0fdf4; border: 2px solid #22c55e; border-radius: 8px; }
+	.slot-btn, .slot-display { width: 100%; height: 100%; border: 2px solid transparent; background: none; padding: 0.4rem; display: flex; flex-direction: column; text-align: left; gap: 0.3rem; position: relative; border-radius: 8px; }
+	.slot-btn { cursor: pointer; transition: all 0.2s ease-in-out; }
+	.slot-btn:hover:not(.full) { background: white; border-color: #2563eb; transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); z-index: 10; }
+	.slot-display { cursor: default; }
+	.slot-btn.mine, .slot-display.mine { background: #f0fdf4; border: 2px solid #22c55e; border-radius: 8px; }
+	.slot-btn.mine:hover { border-color: #2563eb; background: #f0fdf4; }
 	.slot-btn.full { opacity: 0.6; cursor: not-allowed; }
 
 	.slot-row { display: flex; align-items: center; justify-content: space-between; width: 100%; }
