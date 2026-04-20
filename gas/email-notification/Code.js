@@ -13,7 +13,6 @@ const CLASS_TIMES = {
   '7': '15:00'
 };
 
-// 교사 구글챗 웹훅 주소 (src/lib/teacherWebhooks.ts 기반)
 const TEACHER_WEBHOOKS = {
 	'김민정': 'https://chat.googleapis.com/v1/spaces/AAQAP9WjC-o/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=0ernJwOL7BSceQ32yW192kXFl3G_e1Ce_lt6U58KgxU',
 	'전태상': 'https://chat.googleapis.com/v1/spaces/AAQA4PQ551k/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=M3Bfv44ngYV1vZ89DbkZWqg-YGUTleumvsFkZzD646g',
@@ -55,109 +54,70 @@ const TEACHER_WEBHOOKS = {
 	'강신완': 'https://chat.googleapis.com/v1/spaces/AAQASEyqu5g/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=07dWRCZemnLdTZguc73alL1YvSyc9O2y1fYmp1eqHIE'
 };
 
-/**
- * 1. 외부 호출용 API (승인/거부 시 즉시 발송)
- */
 function doPost(e) {
   try {
     const params = JSON.parse(e.postData.contents);
     const { email, name, date, period, subject, teacher, status } = params;
-    
     if (status === 'APPROVED' || status === 'DECLINED') {
       sendImmediateEmail(email, name, date, period, subject, teacher, status);
     }
-    
-    return ContentService.createTextOutput(JSON.stringify({ result: 'success' }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ result: 'success' })).setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ result: 'error', message: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ result: 'error', message: error.toString() })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-/**
- * 2. 1분마다 실행되는 알림 체크 트리거
- */
 function checkAndSendNotifications() {
   const now = new Date();
   const todayStr = Utilities.formatDate(now, "Asia/Seoul", "yyyy-MM-dd");
 
   const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/observation_applications`;
-  
-  const options = {
-    method: 'get',
-    headers: { 'Authorization': 'Bearer ' + ScriptApp.getOAuthToken() },
-    muteHttpExceptions: true
-  };
+  const options = { method: 'get', headers: { 'Authorization': 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true };
   
   try {
     const response = UrlFetchApp.fetch(url, options);
     const data = JSON.parse(response.getContentText());
-    
-    if (response.getResponseCode() !== 200) return;
-    if (!data.documents) return;
+    if (response.getResponseCode() !== 200 || !data.documents) return;
 
     data.documents.forEach(doc => {
       const fields = doc.fields;
-      if (!fields.date || !fields.status) return;
+      if (!fields.date || !fields.status || fields.date.stringValue !== todayStr || fields.status.stringValue !== 'APPROVED') return;
 
-      const appDate = fields.date.stringValue;
-      const appStatus = fields.status.stringValue;
       const period = fields.period.stringValue;
+      const startTime = CLASS_TIMES[period];
+      if (!startTime) return;
 
-      if (appDate === todayStr && appStatus === 'APPROVED') {
-        if (fields.applicantEmail) {
-          processUserNotif(fields.applicantEmail.stringValue, fields, 'STUDENT');
-        }
-        if (fields.teacherEmail) {
-          processUserNotif(fields.teacherEmail.stringValue, fields, 'SUPERVISOR');
-        }
-      }
+      if (fields.applicantEmail) processUserNotif(fields.applicantEmail.stringValue, fields, 'STUDENT');
+      if (fields.teacherEmail) processUserNotif(fields.teacherEmail.stringValue, fields, 'SUPERVISOR');
     });
-  } catch (e) {
-    console.error("❌ checkAndSendNotifications 에러: " + e.toString());
-  }
+  } catch (e) { console.error("❌ 에러: " + e.toString()); }
 }
 
 function processUserNotif(userEmail, appData, role) {
   const userUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/users/${userEmail}`;
-  const options = {
-    method: 'get',
-    headers: { 'Authorization': 'Bearer ' + ScriptApp.getOAuthToken() },
-    muteHttpExceptions: true
-  };
+  const options = { method: 'get', headers: { 'Authorization': 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true };
 
   try {
     const response = UrlFetchApp.fetch(userUrl, options);
     if (response.getResponseCode() !== 200) return;
-
     const userData = JSON.parse(response.getContentText());
     const fields = userData.fields || {};
-
     const isEnabled = fields.notifEnabled ? fields.notifEnabled.booleanValue : false;
     const leadTime = fields.notifLeadTime ? Number(fields.notifLeadTime.integerValue) : 10;
-    
     if (!isEnabled) return;
 
     const startTime = CLASS_TIMES[appData.period.stringValue];
-    const diff = getMinutesDiff(startTime);
-
-    if (diff === leadTime) {
+    if (getMinutesDiff(startTime) === leadTime) {
       const cacheKey = `notif_${appData.date.stringValue}_${appData.period.stringValue}_${userEmail}_${role}`;
       const cache = CacheService.getScriptCache();
-      if (cache.get(cacheKey)) return; // 중복 방지
+      if (cache.get(cacheKey)) return;
 
-      if (role === 'STUDENT') {
-        sendReminderEmail(userEmail, appData);
-      } else {
-        sendTeacherChatReminder(appData);
-      }
+      if (role === 'STUDENT') sendReminderEmail(userEmail, appData);
+      else sendTeacherChatReminder(appData);
       
-      cache.put(cacheKey, 'sent', 3600 * 24); // 24시간 중복 방지
+      cache.put(cacheKey, 'sent', 3600 * 24);
     }
-  } catch (e) {
-    console.error("❌ processUserNotif 에러: " + userEmail, e.toString());
-  }
+  } catch (e) { console.error("❌ 에러: " + userEmail, e.toString()); }
 }
 
 function getMinutesDiff(startTimeStr) {
@@ -192,18 +152,13 @@ function sendTeacherChatReminder(data) {
 
   const period = data.period.stringValue;
   const subject = data.subject.stringValue;
-  const applicant = data.applicantName.stringValue;
+  const applicantName = data.applicantName.stringValue;
+  const applicantSubject = data.applicantSubject ? data.applicantSubject.stringValue : "미지정";
   const classInfo = data.classId ? data.classId.stringValue : "교실";
 
   const message = {
-    text: `📢 *참관 수업 시작 알림*\n\n잠시 후 ${period}교시 수업에 참관 실습생이 방문할 예정입니다.\n\n• *실습생*: ${applicant}\n• *수업*: ${subject} (${classInfo})\n• *시작 시간*: ${CLASS_TIMES[period]}`
+    text: `📢 *참관 수업 시작 알림*\n\n잠시 후 ${period}교시 수업에 참관 실습생이 방문할 예정입니다.\n\n• *실습생*: [${applicantSubject}] ${applicantName}\n• *수업*: ${subject} (${classInfo})\n• *시작 시간*: ${CLASS_TIMES[period]}`
   };
 
-  const options = {
-    method: 'post',
-    contentType: 'application/json',
-    payload: JSON.stringify(message)
-  };
-
-  UrlFetchApp.fetch(webhookUrl, options);
+  UrlFetchApp.fetch(webhookUrl, { method: 'post', contentType: 'application/json', payload: JSON.stringify(message) });
 }
