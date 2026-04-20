@@ -115,16 +115,43 @@
 		});
 	});
 
+	let lessonNotes = $state<Record<string, string>>({});
+
 	$effect(() => {
-		if (!selectedTeacher) { restrictions = []; autoApprove = false; return; }
+		if (!selectedTeacher) { restrictions = []; autoApprove = false; lessonNotes = {}; return; }
 		const unsubRestricted = onSnapshot(query(collection(db, 'restricted_lessons'), where('teacher', '==', selectedTeacher)), (snapshot) => {
 			restrictions = snapshot.docs.map((doc) => doc.id);
 		});
 		const unsubSettings = onSnapshot(doc(db, 'teacher_settings', selectedTeacher), (docSnap) => {
 			autoApprove = docSnap.exists() ? docSnap.data().autoApprove || false : false;
 		});
-		return () => { unsubRestricted(); unsubSettings(); };
+		const unsubNotes = onSnapshot(query(collection(db, 'lesson_notes'), where('teacher', '==', selectedTeacher)), (snapshot) => {
+			const notes: Record<string, string> = {};
+			snapshot.docs.forEach(d => { notes[d.id] = d.data().message; });
+			lessonNotes = notes;
+		});
+		return () => { unsubRestricted(); unsubSettings(); unsubNotes(); };
 	});
+
+	async function updateLessonNote(date: string, period: string, classId: string, currentNote: string) {
+		const noteId = `${selectedTeacher}_${date}_${period}_${classId}`;
+		const newMessage = prompt('실습생에게 전달할 메시지를 입력하세요 (비우면 삭제):', currentNote || '');
+		
+		if (newMessage === null) return;
+		
+		if (newMessage.trim() === '') {
+			await deleteDoc(doc(db, 'lesson_notes', noteId));
+		} else {
+			await setDoc(doc(db, 'lesson_notes', noteId), {
+				teacher: selectedTeacher,
+				date,
+				period,
+				classId,
+				message: newMessage.trim(),
+				updatedAt: new Date()
+			});
+		}
+	}
 
 	$effect(() => { if ($user?.displayName && $isSupervisor && !$isAdmin && !selectedTeacher) selectedTeacher = $user.displayName.split(' (')[0]; });
 
@@ -132,7 +159,14 @@
 
 	async function toggleAutoApprove() {
 		if (!selectedTeacher) return;
-		await setDoc(doc(db, 'teacher_settings', selectedTeacher), { autoApprove: !autoApprove }, { merge: true });
+		const newValue = !autoApprove;
+		try {
+			await setDoc(doc(db, 'teacher_settings', selectedTeacher), { autoApprove: newValue }, { merge: true });
+			alert(`자동 승인 설정이 ${newValue ? 'ON' : 'OFF'}으로 변경되었습니다.`);
+		} catch (e) {
+			console.error(e);
+			alert('설정 변경에 실패했습니다.');
+		}
 	}
 
 	async function toggleRestriction(date: string, period: string, classId: string) {
@@ -312,16 +346,32 @@
 												{#if !isDisabledDate && slot}
 													{@const resId = `${selectedTeacher}_${d}_${period}_${slot.classId}`}
 													{@const isBlocked = restrictions.includes(resId)}
+													{@const hasNote = lessonNotes[resId]}
 													<div class="slot-content card {isBlocked ? 'manually-restricted' : ''}"
 														style="background-color: {isBlocked ? '#fff5f5' : getSubjectColor(slot.subject) + '66'}; border: 1.5px solid {isBlocked ? '#fecaca' : getSubjectColor(slot.subject)};"
 													>
 														<div class="slot-info">
-															<span class="subject" style="background-color: {getSubjectColor(slot.subject)}">{slot.subject}</span>
+															<span 
+																class="subject clickable" 
+																style="background-color: {getSubjectColor(slot.subject)}"
+																onclick={() => updateLessonNote(d, period, slot.classId, hasNote)}
+																role="button"
+																tabindex="0"
+																title="메시지 입력/수정"
+															>
+																{slot.subject}
+																{#if hasNote}
+																	<span class="note-indicator">💬</span>
+																{/if}
+															</span>
 															<span class="class-label">{slot.classId.substring(0, 1)}-{parseInt(slot.classId.substring(2))}</span>
 															<button class="btn-toggle-restriction {isBlocked ? 'is-restricted' : 'is-available'}" onclick={() => toggleRestriction(d, period, slot.classId)}>
 																{isBlocked ? '불가' : '가능'}
 															</button>
 														</div>
+														{#if hasNote}
+															<div class="lesson-note-preview">{hasNote}</div>
+														{/if}
 														<div class="applicant-list">
 															{#each apps as app}
 																<div class="app-item {app.status || 'PENDING'}">
@@ -378,7 +428,11 @@
 	.period-cell { display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: 900; font-size: 1.1rem; color: white; }
 	.slot-content { height: 100%; padding: 0.3rem; border: 2px solid transparent; border-radius: 6px; position: relative; }
 	.slot-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-	.subject { font-size: 0.85rem; font-weight: 900; padding: 0.2rem 0.4rem; border-radius: 4px; }
+	.subject { font-size: 0.85rem; font-weight: 900; padding: 0.2rem 0.4rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px; }
+	.subject.clickable { cursor: pointer; transition: transform 0.1s; }
+	.subject.clickable:hover { transform: scale(1.05); }
+	.note-indicator { font-size: 0.7rem; }
+	.lesson-note-preview { font-size: 0.7rem; color: #475569; background: rgba(255,255,255,0.5); padding: 0.2rem 0.4rem; border-radius: 4px; margin-top: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; border: 1px dashed #cbd5e1; }
 	.class-label { font-size: 0.95rem; color: #1e293b; font-weight: 900; }
 	.btn-toggle-restriction { font-size: 0.8rem; cursor: pointer; padding: 0.2rem 0.5rem; border: 1.5px solid #cbd5e1; border-radius: 4px; background: white; font-weight: 800; transition: all 0.2s; }
 	.btn-toggle-restriction.is-available { background-color: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }

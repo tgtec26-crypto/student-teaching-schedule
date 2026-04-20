@@ -147,6 +147,10 @@
 	});
 
 	// 4. Actions
+	let showNoteModal = $state(false);
+	let activeNote = $state('');
+	let pendingAppData = $state<any>(null);
+
 	async function toggleApplication(targetDate: string, classId: string, period: string, subject: string, teacher: string) {
 		if (!$user) return alert('로그인이 필요합니다.');
 		if ($isSupervisor && !$isAdmin) return alert('지도교사는 참관 신청을 할 수 없습니다.');
@@ -159,64 +163,76 @@
 			if (confirm(`${targetDate} ${period}교시 신청하시겠습니까?`)) {
 				const s = studentData[$user.email];
 				
-				// 승인 상태 결정 로직
-				let status = 'PENDING'; // 기본값은 대기
+				// 수업 메시지 확인
+				const noteId = `${teacher}_${targetDate}_${period}_${classId}`;
+				const noteSnap = await getDoc(doc(db, 'lesson_notes', noteId));
 				
-				if (['2026-05-06', '2026-05-07', '2026-05-08'].includes(targetDate)) {
-					// 1. 5월 6, 7, 8일은 무조건 자동 승인
-					status = 'APPROVED';
-				} else {
-					// 2. 11일 이후부터는 교사의 설정을 확인
-					const settingsSnap = await getDoc(doc(db, 'teacher_settings', teacher));
-					if (settingsSnap.exists() && settingsSnap.data().autoApprove === true) {
-						status = 'APPROVED';
-					}
-				}
-
 				const tEntry = Object.entries(teacherMetadata).find(([email, meta]) => meta.name === teacher);
 				const teacherEmail = tEntry ? tEntry[0] : null;
 
-				await addDoc(collection(db, 'observation_applications'), { 
-					date: targetDate, 
-					classId, 
-					period, 
-					subject, 
-					teacher, 
-					teacherEmail,
-					applicantEmail: $user.email, 
-					applicantName: s ? s.name : $user.displayName, 
-					applicantSubject: s ? s.subject : '미정', 
-					status: status, 
-					timestamp: Timestamp.now() 
-				});
+				const appData = {
+					targetDate, classId, period, subject, teacher, teacherEmail,
+					applicantEmail: $user.email, applicantName: s ? s.name : $user.displayName,
+					applicantSubject: s ? s.subject : '미정'
+				};
 
-				const url = teacherWebhooks[teacher];
-				if (url) {
-					const statusText = status === 'APPROVED' ? '✅ 자동 승인 완료' : '⏳ 승인 대기 중';
-					const statusGuide = status === 'APPROVED' 
-						? '교사님의 설정에 따라 자동으로 승인되었습니다.' 
-						: '신청이 접수되었습니다. 지도교사 페이지에서 승인 여부를 결정해 주세요.';
-					
-					const message = [
-						`🔔 *새로운 참관 신청 알림 (${status === 'APPROVED' ? '자동 승인됨' : '대기'})*`,
-						'',
-						`• *신청자*: [${s?.subject || '미정'}] ${s?.name || $user.displayName}`,
-						`• *일시*: ${targetDate} ${period}교시`,
-						`• *과목*: ${subject}`,
-						`• *상태*: ${statusText}`,
-						'',
-						statusGuide,
-						`🔗 [지도 교사 승인 페이지 바로가기](https://student-teaching-schedule.vercel.app/supervisor)`
-					].join('\n');
-
-					fetch(url, { 
-						method: 'POST', 
-						mode: 'no-cors', 
-						body: JSON.stringify({ text: message }) 
-					});
+				if (noteSnap.exists()) {
+					activeNote = noteSnap.data().message;
+					pendingAppData = appData;
+					showNoteModal = true;
+				} else {
+					await finalizeApplication(appData);
 				}
 			}
 		}
+	}
+
+	async function finalizeApplication(data: any) {
+		const { targetDate, classId, period, subject, teacher, teacherEmail, applicantEmail, applicantName, applicantSubject } = data;
+		
+		// 승인 상태 결정 로직
+		let status = 'PENDING'; // 기본값은 대기
+		
+		const settingsSnap = await getDoc(doc(db, 'teacher_settings', teacher));
+		
+		if (['2026-05-06', '2026-05-07', '2026-05-08'].includes(targetDate)) {
+			// 1. 5월 6, 7, 8일은 무조건 자동 승인
+			status = 'APPROVED';
+		} else if (settingsSnap.exists() && settingsSnap.data().autoApprove === true) {
+			// 2. 교사의 설정이 ON인 경우
+			status = 'APPROVED';
+		}
+
+		await addDoc(collection(db, 'observation_applications'), { 
+			date: targetDate, classId, period, subject, teacher, teacherEmail,
+			applicantEmail, applicantName, applicantSubject, 
+			status: status, timestamp: Timestamp.now() 
+		});
+
+		const url = teacherWebhooks[teacher];
+		if (url) {
+			const statusText = status === 'APPROVED' ? '✅ 자동 승인 완료' : '⏳ 승인 대기 중';
+			const statusGuide = status === 'APPROVED' 
+				? '교사님의 설정에 따라 자동으로 승인되었습니다.' 
+				: '신청이 접수되었습니다. 지도교사 페이지에서 승인 여부를 결정해 주세요.';
+			
+			const message = [
+				`🔔 *새로운 참관 신청 알림 (${status === 'APPROVED' ? '자동 승인됨' : '대기'})*`,
+				'',
+				`• *신청자*: [${applicantSubject || '미정'}] ${applicantName}`,
+				`• *일시*: ${targetDate} ${period}교시`,
+				`• *과목*: ${subject}`,
+				`• *상태*: ${statusText}`,
+				'',
+				statusGuide,
+				`🔗 [지도 교사 승인 페이지 바로가기](https://student-teaching-schedule.vercel.app/supervisor)`
+			].join('\n');
+
+			fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ text: message }) });
+		}
+		
+		showNoteModal = false;
+		pendingAppData = null;
 	}
 
 	function getRepeatingSlot(classId: string, dStr: string, period: string) {
@@ -412,7 +428,40 @@
 	{/if}
 </div>
 
+{#if showNoteModal}
+	<div class="note-modal-overlay">
+		<div class="note-modal-card board-style">
+			<div class="note-header">
+				<AlertCircle size={24} />
+				<h3>지도교사 전달 사항</h3>
+			</div>
+			<div class="note-body">
+				<p class="note-content">"{activeNote}"</p>
+			</div>
+			<div class="note-footer">
+				<button class="btn-confirm-note" onclick={() => finalizeApplication(pendingAppData)}>
+					확인 및 신청 완료
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
+	/* Modal Styles */
+	.note-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+	.note-modal-card { background: white; width: 90%; max-width: 450px; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); animation: modalIn 0.3s ease-out; }
+	.board-style { border: 4px solid #283151; }
+	.note-header { background: #283151; color: white; padding: 0.9rem 1.2rem; display: flex; align-items: center; gap: 0.8rem; }
+	.note-header h3 { margin: 0; font-size: 1.15rem; font-weight: 900; }
+	.note-body { padding: 2.2rem 2rem; text-align: center; background: #fdfbf2; }
+	.note-content { font-size: 1.15rem; font-weight: 700; color: #1e293b; line-height: 1.6; word-break: keep-all; margin: 0; }
+	.note-footer { padding: 1rem; display: flex; justify-content: center; background: white; border-top: 1px solid #e2e8f0; }
+	.btn-confirm-note { background: #283151; color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 10px; font-weight: 800; cursor: pointer; transition: all 0.2s; width: 55%; font-size: 0.95rem; }
+	.btn-confirm-note:hover { background: #1e293b; transform: translateY(-2px); }
+
+	@keyframes modalIn { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
 	.main-hub { width: 100%; min-height: 100vh; background: #f8fafc; }
 	.content-container { max-width: 1300px; margin: 0 auto; padding: 0 1.5rem 3rem 1.5rem; }
 	.card { background: white; border-radius: 12px; border: 1px solid #eef2f6; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }

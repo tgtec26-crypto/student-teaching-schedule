@@ -246,9 +246,21 @@
 				const aName = sInfo ? sInfo.name : $user.displayName;
 				const aSubject = sInfo ? sInfo.subject : '미정';
 
+				// 수업 메시지 확인
+				const noteId = `${teacher}_${targetDate}_${period}_${classId}`;
+				const noteSnap = await getDoc(doc(db, 'lesson_notes', noteId));
+				if (noteSnap.exists()) {
+					alert(`📢 지도교사 전달 사항:\n\n"${noteSnap.data().message}"`);
+				}
+
 				const settingsSnap = await getDoc(doc(db, 'teacher_settings', teacher));
-				let isAutoApprove = settingsSnap.exists() ? settingsSnap.data().autoApprove : false;
-				if (['2026-05-06', '2026-05-07', '2026-05-08'].includes(targetDate)) isAutoApprove = true;
+				let isAutoApprove = false;
+				
+				if (['2026-05-06', '2026-05-07', '2026-05-08'].includes(targetDate)) {
+					isAutoApprove = true;
+				} else if (settingsSnap.exists() && settingsSnap.data().autoApprove === true) {
+					isAutoApprove = true;
+				}
 
 				const tEntry = Object.entries(teacherMetadata).find(([email, meta]) => meta.name === teacher);
 				const teacherEmail = tEntry ? tEntry[0] : null;
@@ -512,7 +524,40 @@
 	{/if}
 </div>
 
+{#if showNoteModal}
+	<div class="note-modal-overlay">
+		<div class="note-modal-card board-style">
+			<div class="note-header">
+				<AlertCircle size={24} />
+				<h3>지도교사 전달 사항</h3>
+			</div>
+			<div class="note-body">
+				<p class="note-content">"{activeNote}"</p>
+			</div>
+			<div class="note-footer">
+				<button class="btn-confirm-note" onclick={() => finalizeApplication(pendingAppData)}>
+					확인 및 신청 완료
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
+	/* Modal Styles */
+	.note-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+	.note-modal-card { background: white; width: 90%; max-width: 450px; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); animation: modalIn 0.3s ease-out; }
+	.board-style { border: 4px solid #283151; }
+	.note-header { background: #283151; color: white; padding: 0.9rem 1.2rem; display: flex; align-items: center; gap: 0.8rem; }
+	.note-header h3 { margin: 0; font-size: 1.15rem; font-weight: 900; }
+	.note-body { padding: 2.2rem 2rem; text-align: center; background: #fdfbf2; }
+	.note-content { font-size: 1.15rem; font-weight: 700; color: #1e293b; line-height: 1.6; word-break: keep-all; margin: 0; }
+	.note-footer { padding: 1rem; display: flex; justify-content: center; background: white; border-top: 1px solid #e2e8f0; }
+	.btn-confirm-note { background: #283151; color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 10px; font-weight: 800; cursor: pointer; transition: all 0.2s; width: 55%; font-size: 0.95rem; }
+	.btn-confirm-note:hover { background: #1e293b; transform: translateY(-2px); }
+
+	@keyframes modalIn { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
 	.full-width { max-width: 1400px !important; margin: 0 auto; padding: 0 2rem 2rem 2rem; }
 	.page-header { margin-bottom: 1.5rem; padding-top: 1rem; display: flex; flex-direction: column; gap: 1rem; }
 	.back-link { display: flex; align-items: center; gap: 0.5rem; color: #64748b; text-decoration: none; font-weight: 700; width: fit-content; }
