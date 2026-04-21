@@ -252,18 +252,30 @@
 	}
 
 	async function resetRestrictions() {
-		if (!confirm('모든 개별 수업 참관 불가 설정을 초기화하시겠습니까?\n선생님들이 직접 설정한 데이터가 모두 삭제됩니다.')) {
+		if (!confirm('모든 개별 수업 차단, 안내 메시지, 교사 설정을 초기화하시겠습니까?\n선생님들이 직접 입력한 모든 데이터가 삭제됩니다.')) {
 			return;
 		}
 
 		try {
-			const q = query(collection(db, 'restricted_lessons'));
-			const snapshot = await getDocs(q);
-			const deletePromises = snapshot.docs.map((d) => deleteDoc(d.ref));
-			await Promise.all(deletePromises);
-			message = { text: '모든 참관 불가 설정이 초기화되었습니다.', type: 'success' };
+			// 1. 개별 수업 차단 초기화
+			const qRest = query(collection(db, 'restricted_lessons'));
+			const snapRest = await getDocs(qRest);
+			const delRest = snapRest.docs.map((d) => deleteDoc(d.ref));
+			
+			// 2. 안내 메시지 초기화
+			const qNotes = query(collection(db, 'lesson_notes'));
+			const snapNotes = await getDocs(qNotes);
+			const delNotes = snapNotes.docs.map((d) => deleteDoc(d.ref));
+
+			// 3. 교사 설정(기본 안내, 자동 승인) 초기화
+			const qSettings = query(collection(db, 'teacher_settings'));
+			const snapSettings = await getDocs(qSettings);
+			const delSettings = snapSettings.docs.map((d) => deleteDoc(d.ref));
+
+			await Promise.all([...delRest, ...delNotes, ...delSettings]);
+			message = { text: '모든 참관 차단, 안내 메시지 및 교사 설정이 초기화되었습니다.', type: 'success' };
 		} catch (e: any) {
-			console.error('Reset restrictions error:', e);
+			console.error('Reset all teacher data error:', e);
 			message = { text: '데이터 초기화 중 오류가 발생했습니다: ' + e.message, type: 'error' };
 		}
 	}
@@ -473,7 +485,7 @@
 						</button>
 						<button class="btn btn-warning" onclick={resetRestrictions}>
 							<Trash2 size={18} />
-							개별 수업 참관 불가 설정 초기화
+							교사 데이터 초기화 (차단, 안내 메시지, 설정)
 						</button>
 					</div>
 				</div>
