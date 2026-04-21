@@ -162,39 +162,34 @@
 		else {
 			if (applications.some(a => a.applicantEmail === $user.email && a.date === targetDate && a.period === period)) return alert('이미 다른 수업을 신청하셨습니다.');
 			if (applications.filter(a => a.date === targetDate && a.classId === classId && a.period === period).length >= maxApplicants) return alert('정원이 초과되었습니다.');
-			if (confirm(`${targetDate} ${period}교시 신청하시겠습니까?`)) {
-				const s = studentData[$user.email];
-				
-				// 교사 설정 및 메시지 확인
-				const settingsSnap = await getDoc(doc(db, 'teacher_settings', teacher));
-				const noteId = `${teacher}_${targetDate}_${period}_${classId}`;
-				const noteSnap = await getDoc(doc(db, 'lesson_notes', noteId));
-				
-				let combinedNote = '';
-				const defNote = settingsSnap.exists() ? settingsSnap.data().defaultNote : '';
-				const lesNote = noteSnap.exists() ? noteSnap.data().message : '';
+			
+			const s = studentData[$user.email];
+			
+			// 교사 설정 및 메시지 확인
+			const settingsSnap = await getDoc(doc(db, 'teacher_settings', teacher));
+			const noteId = `${teacher}_${targetDate}_${period}_${classId}`;
+			const noteSnap = await getDoc(doc(db, 'lesson_notes', noteId));
+			
+			let combinedNote = '';
+			const defNote = settingsSnap.exists() ? settingsSnap.data().defaultNote : '';
+			const lesNote = noteSnap.exists() ? noteSnap.data().message : '';
 
-				if (defNote && lesNote) combinedNote = `${defNote}\n\n[수업별 추가 안내]\n${lesNote}`;
-				else if (defNote) combinedNote = defNote;
-				else if (lesNote) combinedNote = lesNote;
+			if (defNote && lesNote) combinedNote = `${defNote}\n\n[수업별 추가 안내]\n${lesNote}`;
+			else if (defNote) combinedNote = defNote;
+			else if (lesNote) combinedNote = lesNote;
 
-				const tEntry = Object.entries(teacherMetadata).find(([email, meta]) => meta.name === teacher);
-				const teacherEmail = tEntry ? tEntry[0] : null;
+			const tEntry = Object.entries(teacherMetadata).find(([email, meta]) => meta.name === teacher);
+			const teacherEmail = tEntry ? tEntry[0] : null;
 
-				const appData = {
-					targetDate, classId, period, subject, teacher, teacherEmail,
-					applicantEmail: $user.email, applicantName: s ? s.name : $user.displayName,
-					applicantSubject: s ? s.subject : '미정'
-				};
+			const appData = {
+				targetDate, classId, period, subject, teacher, teacherEmail,
+				applicantEmail: $user.email, applicantName: s ? s.name : $user.displayName,
+				applicantSubject: s ? s.subject : '미정'
+			};
 
-				if (combinedNote) {
-					activeNote = combinedNote;
-					pendingAppData = appData;
-					showNoteModal = true;
-				} else {
-					await finalizeApplication(appData);
-				}
-			}
+			activeNote = combinedNote || '별도의 전달 사항이 없습니다. 신청하시겠습니까?';
+			pendingAppData = appData;
+			showNoteModal = true;
 		}
 	}
 
@@ -450,8 +445,11 @@
 				<p class="note-content">{activeNote}</p>
 			</div>
 			<div class="note-footer">
+				<button class="btn-cancel-note" onclick={() => { showNoteModal = false; pendingAppData = null; }}>
+					취소
+				</button>
 				<button class="btn-confirm-note" onclick={() => finalizeApplication(pendingAppData)}>
-					확인 및 신청 완료
+					신청 완료
 				</button>
 			</div>
 		</div>
@@ -467,9 +465,11 @@
 	.note-header h3 { margin: 0; font-size: 1.15rem; font-weight: 900; }
 	.note-body { padding: 2.2rem 2rem; text-align: center; background: #fdfbf2; }
 	.note-content { font-size: 1.15rem; font-weight: 700; color: #1e293b; line-height: 1.6; word-break: keep-all; margin: 0; white-space: pre-wrap; }
-	.note-footer { padding: 1rem; display: flex; justify-content: center; background: white; border-top: 1px solid #e2e8f0; }
-	.btn-confirm-note { background: #283151; color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 10px; font-weight: 800; cursor: pointer; transition: all 0.2s; width: 55%; font-size: 0.95rem; }
-	.btn-confirm-note:hover { background: #1e293b; transform: translateY(-2px); }
+	.note-footer { padding: 1.2rem; display: flex; justify-content: center; gap: 0.8rem; background: white; border-top: 1px solid #e2e8f0; }
+	.btn-confirm-note { background: #283151; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 12px; font-weight: 800; cursor: pointer; transition: all 0.2s; flex: 1.5; font-size: 1rem; }
+	.btn-confirm-note:hover { background: #1e293b; transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+	.btn-cancel-note { background: #f1f5f9; color: #475569; border: none; padding: 0.8rem 1.5rem; border-radius: 12px; font-weight: 800; cursor: pointer; transition: all 0.2s; flex: 1; font-size: 1rem; }
+	.btn-cancel-note:hover { background: #e2e8f0; color: #1e293b; }
 
 	@keyframes modalIn { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
