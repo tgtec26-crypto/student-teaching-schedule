@@ -216,6 +216,57 @@
 		return restrictedDates.includes(targetDate);
 	}
 
+	// 4. Actions
+	let showNoteModal = $state(false);
+	let activeNote = $state('');
+	let pendingAppData = $state<any>(null);
+
+	async function finalizeApplication(data: any) {
+		const { targetDate, classId, period, subject, teacher, teacherEmail, applicantEmail, applicantName, applicantSubject } = data;
+		
+		// 승인 상태 결정 로직
+		let status = 'PENDING';
+		
+		const settingsSnap = await getDoc(doc(db, 'teacher_settings', teacher));
+		
+		if (['2026-05-06', '2026-05-07', '2026-05-08'].includes(targetDate)) {
+			status = 'APPROVED';
+		} else if (settingsSnap.exists() && settingsSnap.data().autoApprove === true) {
+			status = 'APPROVED';
+		}
+
+		await addDoc(collection(db, 'observation_applications'), { 
+			date: targetDate, classId, period, subject, teacher, teacherEmail,
+			applicantEmail, applicantName, applicantSubject, 
+			status: status, timestamp: Timestamp.now() 
+		});
+
+		const url = teacherWebhooks[teacher];
+		if (url) {
+			const statusText = status === 'APPROVED' ? '✅ 자동 승인 완료' : '⏳ 승인 대기 중';
+			const statusGuide = status === 'APPROVED' 
+				? '교사님의 설정에 따라 자동으로 승인되었습니다.' 
+				: '신청이 접수되었습니다. 지도교사 페이지에서 승인 여부를 결정해 주세요.';
+			
+			const message = [
+				`🔔 *새로운 참관 신청 알림 (${status === 'APPROVED' ? '자동 승인됨' : '대기'})*`,
+				'',
+				`• *신청자*: [${applicantSubject || '미정'}] ${applicantName}`,
+				`• *일시*: ${targetDate} ${period}교시`,
+				`• *과목*: ${subject}`,
+				`• *상태*: ${statusText}`,
+				'',
+				statusGuide,
+				`🔗 [지도 교사 승인 페이지 바로가기](https://student-teaching-schedule.vercel.app/supervisor)`
+			].join('\n');
+
+			fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ text: message }) });
+		}
+		
+		showNoteModal = false;
+		pendingAppData = null;
+	}
+
 	async function toggleApplication(targetDate: string, classId: string, period: string, subject: string, teacher: string) {
 		if (!$user) return alert('로그인이 필요합니다.');
 		if (isDateDisabled(targetDate)) return alert('해당 날짜는 참관 신청이 불가능한 날입니다.');
@@ -242,39 +293,33 @@
 				const aName = sInfo ? sInfo.name : $user.displayName;
 				const aSubject = sInfo ? sInfo.subject : '미정';
 
-				// 수업 메시지 확인
+				// 교사 설정 및 메시지 확인
+				const settingsSnap = await getDoc(doc(db, 'teacher_settings', teacher));
 				const noteId = `${teacher}_${targetDate}_${period}_${classId}`;
 				const noteSnap = await getDoc(doc(db, 'lesson_notes', noteId));
-				if (noteSnap.exists()) {
-					alert(`📢 지도교사 전달 사항:\n\n"${noteSnap.data().message}"`);
-				}
-
-				const settingsSnap = await getDoc(doc(db, 'teacher_settings', teacher));
-				let isAutoApprove = false;
 				
-				if (['2026-05-06', '2026-05-07', '2026-05-08'].includes(targetDate)) {
-					isAutoApprove = true;
-				} else if (settingsSnap.exists() && settingsSnap.data().autoApprove === true) {
-					isAutoApprove = true;
-				}
+				let combinedNote = '';
+				const defNote = settingsSnap.exists() ? settingsSnap.data().defaultNote : '';
+				const lesNote = noteSnap.exists() ? noteSnap.data().message : '';
+
+				if (defNote && lesNote) combinedNote = `${defNote}\n\n[수업별 추가 안내]\n${lesNote}`;
+				else if (defNote) combinedNote = defNote;
+				else if (lesNote) combinedNote = lesNote;
 
 				const tEntry = Object.entries(teacherMetadata).find(([email, meta]) => meta.name === teacher);
 				const teacherEmail = tEntry ? tEntry[0] : null;
 
-				await addDoc(collection(db, 'observation_applications'), {
-					date: targetDate, classId, period, subject, teacher, teacherEmail,
-					applicantEmail: $user.email, applicantName: aName, applicantSubject: aSubject,
-					status: isAutoApprove ? 'APPROVED' : 'PENDING', timestamp: Timestamp.now()
-				});
+				const appData = {
+					targetDate, classId, period, subject, teacher, teacherEmail,
+					applicantEmail: $user.email, applicantName: aName, applicantSubject: aSubject
+				};
 
-				const webhookUrl = teacherWebhooks[teacher];
-				if (webhookUrl) {
-					await fetch(webhookUrl, {
-						method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({
-							text: `🔔 *참관 신청 알림*\n* 신청자: [${aSubject}] ${aName}\n* 일시: ${targetDate} ${period}교시\n* 과목: ${subject}\n* 상태: ${isAutoApprove ? '✅ 자동 승인' : '⏳ 승인 대기'}`
-						})
-					});
+				if (combinedNote) {
+					activeNote = combinedNote;
+					pendingAppData = appData;
+					showNoteModal = true;
+				} else {
+					await finalizeApplication(appData);
 				}
 			}
 		}
@@ -528,7 +573,7 @@
 				<h3>지도교사 전달 사항</h3>
 			</div>
 			<div class="note-body">
-				<p class="note-content">"{activeNote}"</p>
+				<p class="note-content">{activeNote}</p>
 			</div>
 			<div class="note-footer">
 				<button class="btn-confirm-note" onclick={() => finalizeApplication(pendingAppData)}>
@@ -547,7 +592,7 @@
 	.note-header { background: #283151; color: white; padding: 0.9rem 1.2rem; display: flex; align-items: center; gap: 0.8rem; }
 	.note-header h3 { margin: 0; font-size: 1.15rem; font-weight: 900; }
 	.note-body { padding: 2.2rem 2rem; text-align: center; background: #fdfbf2; }
-	.note-content { font-size: 1.15rem; font-weight: 700; color: #1e293b; line-height: 1.6; word-break: keep-all; margin: 0; }
+	.note-content { font-size: 1.15rem; font-weight: 700; color: #1e293b; line-height: 1.6; word-break: keep-all; margin: 0; white-space: pre-wrap; }
 	.note-footer { padding: 1rem; display: flex; justify-content: center; background: white; border-top: 1px solid #e2e8f0; }
 	.btn-confirm-note { background: #283151; color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 10px; font-weight: 800; cursor: pointer; transition: all 0.2s; width: 55%; font-size: 0.95rem; }
 	.btn-confirm-note:hover { background: #1e293b; transform: translateY(-2px); }

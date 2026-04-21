@@ -165,10 +165,19 @@
 			if (confirm(`${targetDate} ${period}교시 신청하시겠습니까?`)) {
 				const s = studentData[$user.email];
 				
-				// 수업 메시지 확인
+				// 교사 설정 및 메시지 확인
+				const settingsSnap = await getDoc(doc(db, 'teacher_settings', teacher));
 				const noteId = `${teacher}_${targetDate}_${period}_${classId}`;
 				const noteSnap = await getDoc(doc(db, 'lesson_notes', noteId));
 				
+				let combinedNote = '';
+				const defNote = settingsSnap.exists() ? settingsSnap.data().defaultNote : '';
+				const lesNote = noteSnap.exists() ? noteSnap.data().message : '';
+
+				if (defNote && lesNote) combinedNote = `${defNote}\n\n[수업별 추가 안내]\n${lesNote}`;
+				else if (defNote) combinedNote = defNote;
+				else if (lesNote) combinedNote = lesNote;
+
 				const tEntry = Object.entries(teacherMetadata).find(([email, meta]) => meta.name === teacher);
 				const teacherEmail = tEntry ? tEntry[0] : null;
 
@@ -178,8 +187,8 @@
 					applicantSubject: s ? s.subject : '미정'
 				};
 
-				if (noteSnap.exists()) {
-					activeNote = noteSnap.data().message;
+				if (combinedNote) {
+					activeNote = combinedNote;
 					pendingAppData = appData;
 					showNoteModal = true;
 				} else {
@@ -438,7 +447,7 @@
 				<h3>지도교사 전달 사항</h3>
 			</div>
 			<div class="note-body">
-				<p class="note-content">"{activeNote}"</p>
+				<p class="note-content">{activeNote}</p>
 			</div>
 			<div class="note-footer">
 				<button class="btn-confirm-note" onclick={() => finalizeApplication(pendingAppData)}>
@@ -457,7 +466,7 @@
 	.note-header { background: #283151; color: white; padding: 0.9rem 1.2rem; display: flex; align-items: center; gap: 0.8rem; }
 	.note-header h3 { margin: 0; font-size: 1.15rem; font-weight: 900; }
 	.note-body { padding: 2.2rem 2rem; text-align: center; background: #fdfbf2; }
-	.note-content { font-size: 1.15rem; font-weight: 700; color: #1e293b; line-height: 1.6; word-break: keep-all; margin: 0; }
+	.note-content { font-size: 1.15rem; font-weight: 700; color: #1e293b; line-height: 1.6; word-break: keep-all; margin: 0; white-space: pre-wrap; }
 	.note-footer { padding: 1rem; display: flex; justify-content: center; background: white; border-top: 1px solid #e2e8f0; }
 	.btn-confirm-note { background: #283151; color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 10px; font-weight: 800; cursor: pointer; transition: all 0.2s; width: 55%; font-size: 0.95rem; }
 	.btn-confirm-note:hover { background: #1e293b; transform: translateY(-2px); }

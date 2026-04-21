@@ -29,6 +29,7 @@
 
 	let selectedTeacher = $state('');
 	let autoApprove = $state(false);
+	let defaultNote = $state('');
 	let allApplications = $state<any[]>([]);
 	const applications = $derived(allApplications.filter((app) => app.teacher === selectedTeacher));
 	let restrictions = $state<string[]>([]);
@@ -120,12 +121,13 @@
 	let lessonNotes = $state<Record<string, string>>({});
 
 	$effect(() => {
-		if (!selectedTeacher) { restrictions = []; autoApprove = false; lessonNotes = {}; return; }
+		if (!selectedTeacher) { restrictions = []; autoApprove = false; defaultNote = ''; lessonNotes = {}; return; }
 		const unsubRestricted = onSnapshot(query(collection(db, 'restricted_lessons'), where('teacher', '==', selectedTeacher)), (snapshot) => {
 			restrictions = snapshot.docs.map((doc) => doc.id);
 		});
 		const unsubSettings = onSnapshot(doc(db, 'teacher_settings', selectedTeacher), (docSnap) => {
 			autoApprove = docSnap.exists() ? docSnap.data().autoApprove || false : false;
+			defaultNote = docSnap.exists() ? docSnap.data().defaultNote || '' : '';
 		});
 		const unsubNotes = onSnapshot(query(collection(db, 'lesson_notes'), where('teacher', '==', selectedTeacher)), (snapshot) => {
 			const notes: Record<string, string> = {};
@@ -134,6 +136,20 @@
 		});
 		return () => { unsubRestricted(); unsubSettings(); unsubNotes(); };
 	});
+
+	async function updateDefaultNote() {
+		if (!selectedTeacher) return;
+		const newMessage = prompt('모든 수업에 공통으로 적용될 기본 안내 메시지를 입력하세요 (비우면 삭제):', defaultNote);
+		if (newMessage === null) return;
+		
+		try {
+			await setDoc(doc(db, 'teacher_settings', selectedTeacher), { defaultNote: newMessage.trim() }, { merge: true });
+			alert('기본 안내 메시지가 저장되었습니다.');
+		} catch (e) {
+			console.error(e);
+			alert('저장에 실패했습니다.');
+		}
+	}
 
 	async function updateLessonNote(date: string, period: string, classId: string, currentNote: string) {
 		const noteId = `${selectedTeacher}_${date}_${period}_${classId}`;
@@ -307,7 +323,8 @@
 						{#if teacherRestrictions.includes(selectedTeacher)}<span class="global-restricted-tag"><Lock size={12} /> 차단됨</span>{/if}
 					</div>
 					<div class="header-actions">
-						<button class="btn-action" class:on={autoApprove} onclick={toggleAutoApprove}><UserCheck size={16} /> 자동 승인 {autoApprove ? 'ON' : 'OFF'}</button>
+						<button class="btn-action" class:on={defaultNote} onclick={updateDefaultNote}><AlertCircle size={16} /> 기본 안내 {defaultNote ? 'ON' : 'OFF'}</button>
+						<button class="btn-action" class:class:on={autoApprove} onclick={toggleAutoApprove}><UserCheck size={16} /> 자동 승인 {autoApprove ? 'ON' : 'OFF'}</button>
 						{#if $isAdmin}<button class="btn-action" onclick={() => selectedTeacher = ''}><Users size={16} /> 목록으로</button>{/if}
 					</div>
 				</div>
