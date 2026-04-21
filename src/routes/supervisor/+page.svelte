@@ -48,6 +48,8 @@
 		'2026-05-25', '2026-05-26', '2026-05-27', '2026-05-28', '2026-05-29'
 	];
 
+	const restrictedDates = ['2026-05-04', '2026-05-05', '2026-05-22', '2026-05-25', '2026-05-29'];
+
 	// Subject Color Mapping
 	const subjectColors: Record<string, string> = {
 		국어: '#fecaca', 한문: '#fecaca', 수학: '#bbf7d0', 도덕: '#e9d5ff',
@@ -335,7 +337,7 @@
 											{@const slot = getTeacherSlot(selectedTeacher, d, period)}
 											{@const apps = applications.filter(a => a.date === d && a.period === period && (slot ? a.classId === slot.classId : true))}
 											{@const isRestricted = is7thPeriodRestricted(d, period)}
-											{@const isDisabledDate = d === '2026-05-04' || d === '2026-05-05'}
+											{@const isDisabledDate = restrictedDates.includes(d)}
 											<td class="slot-cell {(isRestricted || isDisabledDate) ? 'restricted' : slot ? 'active' : 'empty'}">
 												{#if isDisabledDate}
 													<div class="no-class-text">신청 불가</div>

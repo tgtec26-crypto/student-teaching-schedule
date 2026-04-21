@@ -60,6 +60,8 @@
 		'2026-05-25', '2026-05-26', '2026-05-27', '2026-05-28', '2026-05-29'
 	];
 
+	const restrictedDates = ['2026-05-04', '2026-05-05', '2026-05-22', '2026-05-25', '2026-05-29'];
+
 	const weekDays = ['월', '화', '수', '목', '금'];
 	const periods = ['1', '2', '3', '4', '5', '6', '7'];
 	const maxApplicants = 5;
@@ -75,13 +77,13 @@
 	function nextWeek() { if (currentWeekIndex < 3) { currentWeekIndex++; date = allWeekDates[currentWeekIndex * 5]; } }
 	function prevDate() {
 		const idx = allWeekDates.indexOf(date);
-		const start = currentWeekIndex * 5;
-		date = idx === start ? allWeekDates[start + 4] : allWeekDates[idx - 1];
+		if (idx > 0) date = allWeekDates[idx - 1];
+		else date = allWeekDates[allWeekDates.length - 1];
 	}
 	function nextDate() {
 		const idx = allWeekDates.indexOf(date);
-		const start = currentWeekIndex * 5;
-		date = idx === start + 4 ? allWeekDates[start] : allWeekDates[idx + 1];
+		if (idx < allWeekDates.length - 1) date = allWeekDates[idx + 1];
+		else date = allWeekDates[0];
 	}
 
 	function formatDateShort(dStr: string) {
@@ -154,7 +156,7 @@
 	async function toggleApplication(targetDate: string, classId: string, period: string, subject: string, teacher: string) {
 		if (!$user) return alert('로그인이 필요합니다.');
 		if ($isSupervisor && !$isAdmin) return alert('지도교사는 참관 신청을 할 수 없습니다.');
-		if (targetDate === '2026-05-04' || targetDate === '2026-05-05') return alert('해당 날짜는 신청 불가일입니다.');
+		if (restrictedDates.includes(targetDate)) return alert('해당 날짜는 신청 불가일입니다.');
 		const existing = applications.find(a => a.applicantEmail === $user.email && a.date === targetDate && a.classId === classId && a.period === period);
 		if (existing) { if (confirm('신청을 취소하시겠습니까?')) await deleteDoc(doc(db, 'observation_applications', existing.id)); }
 		else {
@@ -331,10 +333,10 @@
 													{@const slot = classId ? getRepeatingSlot(classId, d, p) : null}
 													{@const apps = classId ? applications.filter(a => a.date === d && a.classId === classId && a.period === p) : []}
 													{@const isMine = apps.some(a => a.applicantEmail === $user?.email)}
-													{@const isRes = d === '2026-05-04' || d === '2026-05-05' || (slot && (restrictions.includes(`${selectedTeacher}_${d}_${p}_${classId}`) || teacherRestrictions.includes(selectedTeacher!)))}
+													{@const isRes = restrictedDates.includes(d) || (slot && (restrictions.includes(`${selectedTeacher}_${d}_${p}_${classId}`) || teacherRestrictions.includes(selectedTeacher!)))}
 													<td class="slot-cell {slot ? 'active' : 'empty'} {isRes ? 'restricted' : ''}">
 														{#if slot}
-															{#if isRes}<div class="res-msg"><Lock size={12} /> { (d === '2026-05-04' || d === '2026-05-05') ? '불가' : '차단'}</div>
+															{#if isRes}<div class="res-msg"><Lock size={12} /> { restrictedDates.includes(d) ? '불가' : '차단'}</div>
 															{:else}
 																<button class="slot-btn {isMine ? 'mine' : ''}" onclick={() => toggleApplication(d, classId, p, slot.subject, selectedTeacher!)}>
 																	<div class="slot-main"><span class="subject" style="background-color: {getSubjectColor(slot.subject)}">{slot.subject}</span><span class="class">{classId.substring(0,1)}-{parseInt(classId.substring(2))}반</span></div>
@@ -378,10 +380,10 @@
 													{@const slot = getRepeatingSlot(cid, date, p)}
 													{@const apps = applications.filter(a => a.date === date && a.classId === cid && a.period === p)}
 													{@const isMine = apps.some(a => a.applicantEmail === $user?.email)}
-													{@const isRes = date === '2026-05-04' || date === '2026-05-05' || (slot && (restrictions.includes(`${slot.teacher}_${date}_${p}_${cid}`) || teacherRestrictions.includes(slot.teacher)))}
+													{@const isRes = restrictedDates.includes(date) || (slot && (restrictions.includes(`${slot.teacher}_${date}_${p}_${cid}`) || teacherRestrictions.includes(slot.teacher)))}
 													<td class="slot-cell {slot ? 'active' : 'empty'} {isRes ? 'restricted' : ''}">
 														{#if slot}
-															{#if isRes}<div class="res-msg"><Lock size={12} /> { (date === '2026-05-04' || date === '2026-05-05') ? '불가' : '차단'}</div>
+															{#if isRes}<div class="res-msg"><Lock size={12} /> { restrictedDates.includes(date) ? '불가' : '차단'}</div>
 															{:else}
 																<button class="slot-btn {isMine ? 'mine' : ''}" onclick={() => toggleApplication(date, cid, p, slot.subject, slot.teacher)}>
 																	<div class="slot-main"><span class="subject" style="background-color: {getSubjectColor(slot.subject)}">{slot.subject}</span><span class="teacher">{slot.teacher}</span></div>

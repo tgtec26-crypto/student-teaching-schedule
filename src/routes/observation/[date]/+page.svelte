@@ -58,6 +58,8 @@
 		'2026-05-25', '2026-05-26', '2026-05-27', '2026-05-28', '2026-05-29'
 	];
 
+	const restrictedDates = ['2026-05-04', '2026-05-05', '2026-05-22', '2026-05-25', '2026-05-29'];
+
 	// Navigation State
 	let currentWeekIndex = $state(0); 
 
@@ -96,25 +98,19 @@
 
 	function nextDate() {
 		const idx = allWeekDates.indexOf(date);
-		const weekStart = currentWeekIndex * 5;
-		const weekEnd = weekStart + 4;
-		
-		if (idx === weekEnd) {
-			updateURL(allWeekDates[weekStart]); // Cycle to Monday
-		} else {
+		if (idx < allWeekDates.length - 1) {
 			updateURL(allWeekDates[idx + 1]);
+		} else {
+			updateURL(allWeekDates[0]); // Cycle to the very beginning
 		}
 	}
 
 	function prevDate() {
 		const idx = allWeekDates.indexOf(date);
-		const weekStart = currentWeekIndex * 5;
-		const weekEnd = weekStart + 4;
-
-		if (idx === weekStart) {
-			updateURL(allWeekDates[weekEnd]); // Cycle to Friday
-		} else {
+		if (idx > 0) {
 			updateURL(allWeekDates[idx - 1]);
+		} else {
+			updateURL(allWeekDates[allWeekDates.length - 1]); // Cycle to the very end
 		}
 	}
 
@@ -217,7 +213,7 @@
 	});
 
 	function isDateDisabled(targetDate: string) {
-		return targetDate === '2026-05-04' || targetDate === '2026-05-05';
+		return restrictedDates.includes(targetDate);
 	}
 
 	async function toggleApplication(targetDate: string, classId: string, period: string, subject: string, teacher: string) {
