@@ -164,7 +164,7 @@
 			const now = new Date();
 			const nowStr = now.toISOString().split('T')[0];
 			const nowDay = now.getDay();
-			const systemHolidays = ['2026-05-04', '2026-05-05', '2026-05-25'];
+			const systemHolidays = ['2026-05-05', '2026-05-25'];
 			
 			// 0. 오늘이 휴일인지 체크 (신청 행위 자체를 차단)
 			if (nowDay === 0 || nowDay === 6 || systemHolidays.includes(nowStr)) {
@@ -200,7 +200,7 @@
 			startTime.setHours(8, 20, 0, 0);
 
 			if (now < startTime) {
-				const startStr = `${startTime.getMonth() + 1}/${startTime.getDate()}(${weekDays[startTime.getDay() === 0 ? 6 : startTime.getDay() - 1]}) 08:20`;
+				const startStr = `${startTime.getMonth() + 1}/${startTime.getDate()}(${weekDays[startTime.getDay() - 1]}) 08:20`;
 				return alert(`신청 기간이 아닙니다. ${startStr}부터 신청 가능합니다.`);
 			}
 			if (now > endTime) {
