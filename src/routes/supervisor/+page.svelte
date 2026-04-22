@@ -100,7 +100,11 @@
 	const teachers = $derived(Object.keys(teacherToSubject)
 		.filter((teacher) => {
 			if ($isAdmin) return true;
-			const nameOnly = ($user?.displayName || '').split(' (')[0];
+			if ($user?.email) {
+				const tMeta = teacherMetadata[$user.email];
+				if (tMeta && tMeta.name === teacher) return true;
+			}
+			const nameOnly = ($user?.displayName || '').split(' (')[0].trim();
 			return teacher === nameOnly;
 		})
 		.sort((a, b) => {
@@ -122,14 +126,15 @@
 
 	$effect(() => {
 		if (!selectedTeacher) { restrictions = []; autoApprove = false; defaultNote = ''; lessonNotes = {}; return; }
-		const unsubRestricted = onSnapshot(query(collection(db, 'restricted_lessons'), where('teacher', '==', selectedTeacher)), (snapshot) => {
+		const teacherKey = selectedTeacher.trim();
+		const unsubRestricted = onSnapshot(query(collection(db, 'restricted_lessons'), where('teacher', '==', teacherKey)), (snapshot) => {
 			restrictions = snapshot.docs.map((doc) => doc.id);
 		});
-		const unsubSettings = onSnapshot(doc(db, 'teacher_settings', selectedTeacher), (docSnap) => {
+		const unsubSettings = onSnapshot(doc(db, 'teacher_settings', teacherKey), (docSnap) => {
 			autoApprove = docSnap.exists() ? docSnap.data().autoApprove || false : false;
 			defaultNote = docSnap.exists() ? docSnap.data().defaultNote || '' : '';
 		});
-		const unsubNotes = onSnapshot(query(collection(db, 'lesson_notes'), where('teacher', '==', selectedTeacher)), (snapshot) => {
+		const unsubNotes = onSnapshot(query(collection(db, 'lesson_notes'), where('teacher', '==', teacherKey)), (snapshot) => {
 			const notes: Record<string, string> = {};
 			snapshot.docs.forEach(d => { notes[d.id] = d.data().message; });
 			lessonNotes = notes;
@@ -139,11 +144,12 @@
 
 	async function updateDefaultNote() {
 		if (!selectedTeacher) return;
+		const teacherKey = selectedTeacher.trim();
 		const newMessage = prompt('모든 수업에 공통으로 적용될 기본 안내 메시지를 입력하세요 (비우면 삭제):', defaultNote);
 		if (newMessage === null) return;
 		
 		try {
-			await setDoc(doc(db, 'teacher_settings', selectedTeacher), { defaultNote: newMessage.trim() }, { merge: true });
+			await setDoc(doc(db, 'teacher_settings', teacherKey), { defaultNote: newMessage.trim() }, { merge: true });
 			alert('기본 안내 메시지가 저장되었습니다.');
 		} catch (e) {
 			console.error(e);
@@ -152,7 +158,8 @@
 	}
 
 	async function updateLessonNote(date: string, period: string, classId: string, currentNote: string) {
-		const noteId = `${selectedTeacher}_${date}_${period}_${classId}`;
+		const teacherKey = selectedTeacher.trim();
+		const noteId = `${teacherKey}_${date}_${period}_${classId}`;
 		const newMessage = prompt('실습생에게 전달할 메시지를 입력하세요 (비우면 삭제):', currentNote || '');
 		
 		if (newMessage === null) return;
@@ -161,7 +168,7 @@
 			await deleteDoc(doc(db, 'lesson_notes', noteId));
 		} else {
 			await setDoc(doc(db, 'lesson_notes', noteId), {
-				teacher: selectedTeacher,
+				teacher: teacherKey,
 				date,
 				period,
 				classId,
@@ -171,15 +178,25 @@
 		}
 	}
 
-	$effect(() => { if ($user?.displayName && $isSupervisor && !$isAdmin && !selectedTeacher) selectedTeacher = $user.displayName.split(' (')[0]; });
+	$effect(() => {
+		if ($user?.email && $isSupervisor && !$isAdmin && !selectedTeacher) {
+			const tMeta = teacherMetadata[$user.email];
+			if (tMeta) {
+				selectedTeacher = tMeta.name.trim();
+			} else {
+				selectedTeacher = ($user?.displayName || '').split(' (')[0].trim();
+			}
+		}
+	});
 
 	onMount(() => { return onSnapshot(collection(db, 'teacher_restrictions'), (snapshot) => { teacherRestrictions = snapshot.docs.map((doc) => doc.id); }); });
 
 	async function toggleAutoApprove() {
 		if (!selectedTeacher) return;
+		const teacherKey = selectedTeacher.trim();
 		const newValue = !autoApprove;
 		try {
-			await setDoc(doc(db, 'teacher_settings', selectedTeacher), { autoApprove: newValue }, { merge: true });
+			await setDoc(doc(db, 'teacher_settings', teacherKey), { autoApprove: newValue }, { merge: true });
 			alert(`자동 승인 설정이 ${newValue ? 'ON' : 'OFF'}으로 변경되었습니다.`);
 		} catch (e) {
 			console.error(e);
@@ -188,9 +205,10 @@
 	}
 
 	async function toggleRestriction(date: string, period: string, classId: string) {
-		const resId = `${selectedTeacher}_${date}_${period}_${classId}`;
+		const teacherKey = selectedTeacher.trim();
+		const resId = `${teacherKey}_${date}_${period}_${classId}`;
 		if (restrictions.includes(resId)) await deleteDoc(doc(db, 'restricted_lessons', resId));
-		else await setDoc(doc(db, 'restricted_lessons', resId), { teacher: selectedTeacher, date, period, classId, updatedAt: new Date() });
+		else await setDoc(doc(db, 'restricted_lessons', resId), { teacher: teacherKey, date, period, classId, updatedAt: new Date() });
 	}
 
 	async function approveApplication(e: Event, appId: string) {
@@ -324,7 +342,7 @@
 					</div>
 					<div class="header-actions">
 						<button class="btn-action" class:on={defaultNote} onclick={updateDefaultNote}><AlertCircle size={16} /> 기본 안내 {defaultNote ? 'ON' : 'OFF'}</button>
-						<button class="btn-action" class:class:on={autoApprove} onclick={toggleAutoApprove}><UserCheck size={16} /> 자동 승인 {autoApprove ? 'ON' : 'OFF'}</button>
+						<button class="btn-action" class:on={autoApprove} onclick={toggleAutoApprove}><UserCheck size={16} /> 자동 승인 {autoApprove ? 'ON' : 'OFF'}</button>
 						{#if $isAdmin}<button class="btn-action" onclick={() => selectedTeacher = ''}><Users size={16} /> 목록으로</button>{/if}
 					</div>
 				</div>
