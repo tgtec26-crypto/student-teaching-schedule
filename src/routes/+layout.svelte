@@ -2,7 +2,7 @@
 	import '../app.css';
 	import { page } from '$app/state';
 	import { user, login, logout, isAdmin, isSupervisor } from '$lib/firebase';
-	import { LogIn, LogOut, User as UserIcon, ArrowLeft, ShieldCheck, UserCheck, Bell } from 'lucide-svelte';
+	import { LogIn, LogOut, User as UserIcon, ArrowLeft, ShieldCheck, UserCheck, Bell, HelpCircle } from 'lucide-svelte';
 
 	let { children } = $props();
 
@@ -60,6 +60,10 @@
 		<div class="auth-box">
 			{#if $user}
 				<div class="user-info">
+					<a href="/guide" class="btn-settings" title="이용 안내 (참고)">
+						<HelpCircle size={18} />
+						<span class="btn-label">참고</span>
+					</a>
 					<a href="/settings" class="btn-settings" title="알림 설정">
 						<Bell size={18} />
 					</a>
@@ -257,6 +261,12 @@
 	.btn-settings:hover {
 		opacity: 1;
 		transform: scale(1.1);
+	}
+
+	.btn-label {
+		font-size: 0.75rem;
+		font-weight: 800;
+		margin-left: 0.2rem;
 	}
 
 	.btn-login {
