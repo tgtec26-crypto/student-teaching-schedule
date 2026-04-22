@@ -280,33 +280,53 @@
 				await deleteDoc(doc(db, 'observation_applications', existingApp.id));
 			}
 		} else {
-			// 신청 기간 제한 로직 (정확한 영업일 기준)
+			// 신청 기간 제한 로직 (영업일 및 공휴일 반영)
 			const now = new Date();
+			const nowStr = now.toISOString().split('T')[0];
+			const nowDay = now.getDay();
+			const systemHolidays = ['2026-05-04', '2026-05-05', '2026-05-25'];
+			
+			// 0. 오늘이 휴일인지 체크 (신청 행위 자체를 차단)
+			if (nowDay === 0 || nowDay === 6 || systemHolidays.includes(nowStr)) {
+				return alert('주말 및 공휴일에는 참관 신청을 할 수 없습니다.');
+			}
+
 			const [y, m, d_] = targetDate.split('-').map(Number);
 			const lessonDate = new Date(y, m - 1, d_);
-			const dayOfWeek = lessonDate.getDay(); // 월=1, 화=2, 수=3, 목=4, 금=5
 			
-			// 1. 시작 시간 계산: 영업일 기준 3일 전
-			const startTime = new Date(lessonDate);
-			if (dayOfWeek === 1) startTime.setDate(lessonDate.getDate() - 5); // 월 -> 전주 수
-			else if (dayOfWeek === 2) startTime.setDate(lessonDate.getDate() - 5); // 화 -> 전주 목
-			else if (dayOfWeek === 3) startTime.setDate(lessonDate.getDate() - 5); // 수 -> 전주 금
-			else startTime.setDate(lessonDate.getDate() - 3); // 목/금 -> 해당 주 월/화
-			startTime.setHours(8, 20, 0, 0);
-			
-			// 2. 마감 시간 계산: 영업일 기준 1일 전
-			const endTime = new Date(lessonDate);
-			if (dayOfWeek === 1) endTime.setDate(lessonDate.getDate() - 3); // 월 -> 전주 금
-			else endTime.setDate(lessonDate.getDate() - 1); // 화~금 -> 전날
+			// 휴일 여부 판별 함수
+			const isClosed = (d: Date) => {
+				const s = d.toISOString().split('T')[0];
+				const day = d.getDay();
+				return day === 0 || day === 6 || systemHolidays.includes(s);
+			};
+
+			// 1. 마감 시간 계산: 영업일 기준 1일 전 15:45
+			let endTime = new Date(lessonDate);
+			let endCount = 0;
+			while (endCount < 1) {
+				endTime.setDate(endTime.getDate() - 1);
+				if (!isClosed(endTime)) endCount++;
+			}
 			endTime.setHours(15, 45, 0, 0);
 
+			// 2. 시작 시간 계산: 영업일 기준 3일 전 08:20
+			let startTime = new Date(lessonDate);
+			let startCount = 0;
+			while (startCount < 3) {
+				startTime.setDate(startTime.getDate() - 1);
+				if (!isClosed(startTime)) startCount++;
+			}
+			startTime.setHours(8, 20, 0, 0);
+
 			if (now < startTime) {
-				const startStr = `${startTime.getMonth() + 1}/${startTime.getDate()}(${weekDays[startTime.getDay() - 1]}) 08:20`;
+				const startStr = `${startTime.getMonth() + 1}/${startTime.getDate()}(${weekDays[startTime.getDay() === 0 ? 6 : startTime.getDay() - 1]}) 08:20`;
 				return alert(`신청 기간이 아닙니다. ${startStr}부터 신청 가능합니다.`);
 			}
 			if (now > endTime) {
-				const endStr = dayOfWeek === 1 ? '금요일' : '수업 전날';
-				return alert(`신청 기간이 종료되었습니다. (${endStr} 15:45 종료)`);
+				const dayNames: Record<number, string> = { 1: '월요일', 2: '화요일', 3: '수요일', 4: '목요일', 5: '금요일' };
+				const endDayStr = dayNames[endTime.getDay()] || '수업 전날';
+				return alert(`신청 기간이 종료되었습니다. (${endDayStr} 15:45 종료)`);
 			}
 
 			const hasDuplicate = applications.some(
