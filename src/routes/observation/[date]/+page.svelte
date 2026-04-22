@@ -280,6 +280,27 @@
 				await deleteDoc(doc(db, 'observation_applications', existingApp.id));
 			}
 		} else {
+			// 신청 기간 제한 로직
+			const now = new Date();
+			const [y, m, d_] = targetDate.split('-').map(Number);
+			const lessonDate = new Date(y, m - 1, d_);
+			
+			const startTime = new Date(lessonDate);
+			startTime.setDate(lessonDate.getDate() - 3);
+			startTime.setHours(8, 20, 0, 0);
+			
+			const endTime = new Date(lessonDate);
+			endTime.setDate(lessonDate.getDate() - 1);
+			endTime.setHours(15, 45, 0, 0);
+
+			if (now < startTime) {
+				const startStr = `${startTime.getMonth() + 1}/${startTime.getDate()} 08:20`;
+				return alert(`신청 기간이 아닙니다. ${startStr}부터 신청 가능합니다.`);
+			}
+			if (now > endTime) {
+				return alert('신청 기간이 종료되었습니다. (수업 전날 15:45 종료)');
+			}
+
 			const hasDuplicate = applications.some(
 				(app) => app.applicantEmail === $user.email && app.date === targetDate && app.period === period
 			);
