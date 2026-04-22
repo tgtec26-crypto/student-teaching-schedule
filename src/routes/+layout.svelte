@@ -282,25 +282,45 @@
 		font-size: 0.9rem;
 	}
 
+	/* ─── ≤1000px: 가로 배치 헤더 (Galaxy 가로 915px 포함) ─── */
 	@media (max-width: 1000px) {
+		.header-container { padding: 0.5rem 1rem; }
 		.header-inner {
-			flex-direction: column;
-			gap: 1.5rem;
+			flex-direction: row;
+			flex-wrap: nowrap;
+			align-items: center;
+			justify-content: flex-start;
+			gap: 0.6rem;
+			min-height: auto;
 		}
-		.header-logo {
-			width: 80px;
-			height: 80px;
+		.header-logo { order: 1; width: 40px; height: 40px; flex-shrink: 0; }
+		.header-content-main {
+			order: 2; flex: 1; align-items: flex-start;
+			text-align: left; gap: 0; min-width: 0;
 		}
 		.header-title {
-			font-size: 2.2rem;
+			font-size: 1.15rem; letter-spacing: 0;
+			white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 		}
-		.auth-box {
-			position: static;
-			margin-top: 1rem;
-		}
-		.top-left-actions {
-			position: static;
-			margin-bottom: 0.5rem;
-		}
+		.header-desc { display: none; }
+		.top-left-actions { position: static; order: 3; gap: 0.3rem; flex-shrink: 0; }
+		.top-btn { padding: 0.25rem 0.55rem; font-size: 0.75rem; }
+		.auth-box { position: static; order: 4; flex-shrink: 0; }
+		.user-info { padding: 0.3rem 0.65rem; gap: 0.4rem; font-size: 0.8rem; }
+		.user-name { white-space: nowrap; }
+	}
+
+	/* ─── ≤600px: 소형 모바일 세로 모드 추가 압축 ─── */
+	@media (max-width: 600px) {
+		.header-container { padding: 0.4rem 0.65rem; }
+		.header-inner { gap: 0.35rem; }
+		.header-logo { width: 28px; height: 28px; }
+		.header-title { font-size: 0.85rem; }
+		.top-btn { padding: 0.15rem 0.35rem; font-size: 0.62rem; gap: 0.1rem; }
+		.user-info { padding: 0.22rem 0.4rem; gap: 0.2rem; font-size: 0.7rem; }
+		.user-name { max-width: 46px; }
+		.btn-label { display: none; }
+		.btn-settings { padding: 0.1rem; }
+		.btn-login { padding: 0.38rem 0.65rem; font-size: 0.78rem; }
 	}
 </style>

@@ -600,7 +600,7 @@
 	.nav-unit-box.mini .arrow { width: 28px; height: 28px; flex-shrink: 0; }
 	.nav-unit-box.mini .val { font-size: 0.9rem; width: 140px; flex-shrink: 0; }
 
-	.timetable-wrapper { background: white; border-radius: 20px; overflow-x: auto; padding: 1.5rem; border: 1px solid #eef2f6; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+	.timetable-wrapper { background: white; border-radius: 20px; overflow-x: auto; padding: 1.5rem; border: 1px solid #eef2f6; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
 	.timetable { border-collapse: separate; border-spacing: 6px 0; width: auto; table-layout: fixed; margin: 0 auto; }
 	.timetable th { 
 		background: #283151; 
@@ -677,9 +677,92 @@
 	.spin { animation: spin 1s linear infinite; color: #1e293b; margin-bottom: 1rem; }
 	@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+	/* ─── ≤1000px: 시간표 컴팩트 (Galaxy 가로 915px 포함) ─── */
 	@media (max-width: 1000px) {
-		.integrated-nav-row { flex-direction: column; padding: 1rem; gap: 1rem; }
+		.content-container { padding: 0 0.5rem 2.5rem 0.5rem; }
+
+		/* 탭 네비게이션 */
+		.integrated-nav-row { padding: 0.3rem 0.5rem; }
+		.nav-item { padding: 0.35rem 0.8rem; font-size: 0.88rem; }
+
+		/* 주차/날짜 네비게이션 */
+		.val.week { width: 130px; font-size: 0.9rem; }
+		.val.date { width: 118px; font-size: 0.9rem; }
+
+		/* 시간표 래퍼 */
+		.timetable-wrapper { padding: 0.75rem 0.25rem; -webkit-overflow-scrolling: touch; }
+
+		/* 컬럼 130px → 6반 포함 총 약 854px, Galaxy 가로 가용(891px)에서 37px 여유 ✓ */
+		.timetable th { width: 130px; font-size: 0.82rem; padding: 0.45rem 0.2rem; border-radius: 8px 8px 0 0; }
+		.timetable td { width: 130px; min-width: 130px; max-width: 130px; height: 75px; }
+		.sticky-col { width: 32px !important; min-width: 32px !important; max-width: 32px !important; }
+
+		.slot-btn, .slot-display { padding: 0.45rem 0.35rem; gap: 0.25rem; }
+		.subject { font-size: 0.65rem; padding: 0.09rem 0.3rem; }
+		.teacher, .class { font-size: 0.72rem; }
+		.slot-footer { font-size: 0.65rem; }
+
+		.teacher-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.25rem; }
 		.back-btn { position: static; margin-bottom: 0.5rem; }
-		.view-header-top { flex-direction: column; }
+	}
+
+	/* ─── ≤600px: 소형 모바일 세로 모드 ─── */
+	@media (max-width: 600px) {
+		.content-container { padding: 0 0.4rem 2rem 0.4rem; }
+
+		/* 탭 네비게이션 */
+		.integrated-nav-row { padding: 0.2rem 0.35rem; }
+		.nav-item { padding: 0.28rem 0.45rem; font-size: 0.76rem; }
+		.v-line { height: 13px; margin: 0 0.25rem; }
+
+		/* 주차/날짜 네비게이션 */
+		.centered-nav-unit { margin-top: 0.4rem; }
+		.nav-unit-box { padding: 0.15rem; }
+		.val.week { width: 105px; font-size: 0.78rem; }
+		.val.date { width: 92px; font-size: 0.78rem; }
+		.arrow { width: 26px; height: 26px; }
+		.control-group { gap: 0.25rem; padding: 0 0.25rem; }
+
+		/* 시간표: 컬럼 100px → 총 26+5*100=526px, 세로 모드(412px)에서 114px 스크롤 */
+		.timetable-wrapper { padding: 0.5rem 0.3rem; border-radius: 10px; }
+		.timetable th { width: 100px; font-size: 0.7rem; padding: 0.32rem 0.1rem; border-radius: 7px 7px 0 0; }
+		.timetable td { width: 100px; min-width: 100px; max-width: 100px; height: 64px; }
+		.sticky-col { width: 26px !important; min-width: 26px !important; max-width: 26px !important; }
+		.period-cell { font-size: 0.75rem; }
+
+		.slot-btn, .slot-display { padding: 0.28rem 0.22rem; gap: 0.15rem; border-radius: 6px; }
+		.slot-main { gap: 0; }
+		.subject { font-size: 0.55rem; padding: 0.05rem 0.2rem; }
+		.teacher, .class { font-size: 0.6rem; }
+		.slot-footer { font-size: 0.55rem; }
+		.status-tag { font-size: 0.5rem; padding: 0.07rem 0.2rem; }
+		.res-msg { font-size: 0.58rem; }
+
+		/* 교사 카드 그리드 */
+		.teacher-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.18rem; margin-top: 0.4rem; }
+		.teacher-card { padding: 0.65rem 0.7rem; }
+		.teacher-name { font-size: 0.92rem; }
+		.teacher-subject-badge { font-size: 0.67rem; }
+
+		/* 교사 시간표 헤더 */
+		.view-header-grid { gap: 0.35rem; margin-bottom: 0.4rem; margin-top: 0.35rem; }
+		.teacher-title-static { font-size: 0.95rem; }
+		.nav-unit-box.mini .val { width: 96px; font-size: 0.74rem; }
+		.nav-unit-box.mini .arrow { width: 22px; height: 22px; }
+		.back-btn-static { padding: 0.28rem 0.5rem; font-size: 0.74rem; }
+
+		/* 내 일정 카드 */
+		.my-slot-card { padding: 0.38rem; gap: 0.15rem; }
+		.slot-class { font-size: 0.6rem; }
+
+		/* 로딩/로그인 화면 */
+		.loading-state { padding: 2.5rem 1rem; }
+		.login-screen { padding: 2.5rem 1.5rem; margin-top: 0.5rem; }
+	}
+
+	/* 터치 기기: 호버 효과 비활성화 */
+	@media (hover: none) {
+		.slot-btn:hover { transform: none; box-shadow: none; background: none; border-color: transparent; z-index: auto; }
+		.teacher-card:hover { transform: none; border-color: #eef2f6; box-shadow: 0 4px 10px rgba(0,0,0,0.06); }
 	}
 </style>
