@@ -73,6 +73,12 @@
 		if (idx !== -1) currentWeekIndex = Math.floor(idx / 5);
 	});
 
+	function getWeekLabel(index: number) {
+		if (index === 0) return '-2주차 (테스트)';
+		if (index === 1) return '-1주차 (테스트)';
+		return `${index - 1}주차`;
+	}
+
 	const weekDates = $derived(allWeekDates.slice(currentWeekIndex * 5, (currentWeekIndex + 1) * 5));
 
 	function prevWeek() { if (currentWeekIndex > 0) { currentWeekIndex--; date = allWeekDates[currentWeekIndex * 5]; } }
@@ -342,8 +348,8 @@
 					<div class="nav-unit-box">
 						<div class="control-group">
 							<button class="arrow" disabled={currentWeekIndex === 0} onclick={prevWeek}><ChevronLeft size={20} /></button>
-							<span class="val week">{currentWeekIndex + 1}주차</span>
-							<button class="arrow" disabled={currentWeekIndex === 3} onclick={nextWeek}><ChevronRight size={20} /></button>
+							<span class="val week">{getWeekLabel(currentWeekIndex)}</span>
+							<button class="arrow" disabled={currentWeekIndex === 5} onclick={nextWeek}><ChevronRight size={20} /></button>
 						</div>
 						{#if viewMode === 'grade'}
 							<div class="control-divider"></div>
