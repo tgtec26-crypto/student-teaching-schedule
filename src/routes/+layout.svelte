@@ -284,7 +284,10 @@
 
 	/* ─── ≤1000px: 가로 배치 헤더 (Galaxy 가로 915px 포함) ─── */
 	@media (max-width: 1000px) {
-		.header-container { padding: 0.5rem 1rem; }
+		/* iOS 노치/다이나믹 아일랜드 safe-area 대응 */
+		.header-container {
+			padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.5rem max(1rem, env(safe-area-inset-left));
+		}
 		.header-inner {
 			flex-direction: row;
 			flex-wrap: nowrap;

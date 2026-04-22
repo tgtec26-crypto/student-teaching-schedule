@@ -679,7 +679,10 @@
 
 	/* ─── ≤1000px: 시간표 컴팩트 (Galaxy 가로 915px 포함) ─── */
 	@media (max-width: 1000px) {
-		.content-container { padding: 0 0.5rem 2.5rem 0.5rem; }
+		/* iOS safe-area 대응: 노치/다이나믹 아일랜드 가로 모드 */
+		.content-container {
+			padding: 0 max(0.5rem, env(safe-area-inset-right)) 2.5rem max(0.5rem, env(safe-area-inset-left));
+		}
 
 		/* 탭 네비게이션 */
 		.integrated-nav-row { padding: 0.3rem 0.5rem; }
@@ -692,9 +695,9 @@
 		/* 시간표 래퍼 */
 		.timetable-wrapper { padding: 0.75rem 0.25rem; -webkit-overflow-scrolling: touch; }
 
-		/* 컬럼 130px → 6반 포함 총 약 854px, Galaxy 가로 가용(891px)에서 37px 여유 ✓ */
-		.timetable th { width: 130px; font-size: 0.82rem; padding: 0.45rem 0.2rem; border-radius: 8px 8px 0 0; }
-		.timetable td { width: 130px; min-width: 130px; max-width: 130px; height: 75px; }
+		/* 컬럼 120px → 6반 포함 총 794px, iPhone 12 가로(828px 가용)에서 34px 여유 ✓ */
+		.timetable th { width: 120px; font-size: 0.82rem; padding: 0.45rem 0.2rem; border-radius: 8px 8px 0 0; }
+		.timetable td { width: 120px; min-width: 120px; max-width: 120px; height: 75px; }
 		.sticky-col { width: 32px !important; min-width: 32px !important; max-width: 32px !important; }
 
 		.slot-btn, .slot-display { padding: 0.45rem 0.35rem; gap: 0.25rem; }
@@ -704,6 +707,21 @@
 
 		.teacher-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.25rem; }
 		.back-btn { position: static; margin-bottom: 0.5rem; }
+	}
+
+	/* ─── ≤430px: iPhone 세로 모드 전용 (SE 375px ~ Pro Max 430px) ─── */
+	@media (max-width: 430px) {
+		/* 컬럼 85px → 5반(교사별/내 일정) 총 ~481px, iPhone SE(375px)에서 106px 스크롤 */
+		.timetable th { width: 85px; font-size: 0.7rem; padding: 0.3rem 0.1rem; }
+		.timetable td { width: 85px; min-width: 85px; max-width: 85px; height: 62px; }
+		.sticky-col { width: 24px !important; min-width: 24px !important; max-width: 24px !important; }
+		.slot-btn, .slot-display { padding: 0.24rem 0.18rem; gap: 0.12rem; }
+		.subject { font-size: 0.52rem; padding: 0.04rem 0.17rem; }
+		.teacher, .class { font-size: 0.57rem; }
+		.slot-footer { font-size: 0.52rem; }
+		.nav-item { padding: 0.25rem 0.38rem; font-size: 0.72rem; }
+		.val.week { width: 96px; font-size: 0.75rem; }
+		.val.date { width: 84px; font-size: 0.75rem; }
 	}
 
 	/* ─── ≤600px: 소형 모바일 세로 모드 ─── */
