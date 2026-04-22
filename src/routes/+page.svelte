@@ -206,7 +206,18 @@
 			if (now > endTime) {
 				const dayNames: Record<number, string> = { 1: '월요일', 2: '화요일', 3: '수요일', 4: '목요일', 5: '금요일' };
 				const endDayStr = dayNames[endTime.getDay()] || '수업 전날';
-				return alert(`신청 기간이 종료되었습니다. (${endDayStr} 15:45 종료)`);
+				return alert(`신청 기간이 종료되었습니다. (${endDayStr} 16:20 종료)`);
+			}
+
+			// 매일 시간 제한 체크 (08:20 ~ 16:20)
+			const currentHour = now.getHours();
+			const currentMinute = now.getMinutes();
+			const currentTimeVal = currentHour * 60 + currentMinute;
+			const startLimit = 8 * 60 + 20; // 08:20
+			const endLimit = 16 * 60 + 20;  // 16:20
+
+			if (currentTimeVal < startLimit || currentTimeVal > endLimit) {
+				return alert('현재는 신청 가능 시간이 아닙니다.\n참관 신청은 매일 08:20 ~ 16:20 사이에만 가능합니다.');
 			}
 
 			if (applications.some(a => a.applicantEmail === $user.email && a.date === targetDate && a.period === period)) return alert('이미 다른 수업을 신청하셨습니다.');
