@@ -160,33 +160,32 @@
 		const existing = applications.find(a => a.applicantEmail === $user.email && a.date === targetDate && a.classId === classId && a.period === period);
 		if (existing) { if (confirm('신청을 취소하시겠습니까?')) await deleteDoc(doc(db, 'observation_applications', existing.id)); }
 		else {
-			// 신청 기간 제한 로직 (영업일 기준)
+			// 신청 기간 제한 로직 (정확한 영업일 기준)
 			const now = new Date();
 			const [y, m, d_] = targetDate.split('-').map(Number);
 			const lessonDate = new Date(y, m - 1, d_);
+			const dayOfWeek = lessonDate.getDay(); // 월=1, 화=2, 수=3, 목=4, 금=5
 			
-			// 1. 시작 시간 계산: 수업 3일 전 08:20
+			// 1. 시작 시간 계산: 영업일 기준 3일 전
 			const startTime = new Date(lessonDate);
-			startTime.setDate(lessonDate.getDate() - 3);
-			// 시작일이 주말(토=6, 일=0)이면 금요일로 당김
-			if (startTime.getDay() === 0) startTime.setDate(startTime.getDate() - 2); // 일 -> 금
-			else if (startTime.getDay() === 6) startTime.setDate(startTime.getDate() - 1); // 토 -> 금
+			if (dayOfWeek === 1) startTime.setDate(lessonDate.getDate() - 5); // 월 -> 전주 수
+			else if (dayOfWeek === 2) startTime.setDate(lessonDate.getDate() - 5); // 화 -> 전주 목
+			else if (dayOfWeek === 3) startTime.setDate(lessonDate.getDate() - 5); // 수 -> 전주 금
+			else startTime.setDate(lessonDate.getDate() - 3); // 목/금 -> 해당 주 월/화
 			startTime.setHours(8, 20, 0, 0);
 			
-			// 2. 마감 시간 계산: 수업 1일 전 15:45
+			// 2. 마감 시간 계산: 영업일 기준 1일 전
 			const endTime = new Date(lessonDate);
-			endTime.setDate(lessonDate.getDate() - 1);
-			// 마감일이 주말이면 금요일로 당김
-			if (endTime.getDay() === 0) endTime.setDate(endTime.getDate() - 2); // 일 -> 금
-			else if (endTime.getDay() === 6) endTime.setDate(endTime.getDate() - 1); // 토 -> 금
+			if (dayOfWeek === 1) endTime.setDate(lessonDate.getDate() - 3); // 월 -> 전주 금
+			else endTime.setDate(lessonDate.getDate() - 1); // 화~금 -> 전날
 			endTime.setHours(15, 45, 0, 0);
 
 			if (now < startTime) {
-				const startStr = `${startTime.getMonth() + 1}/${startTime.getDate()} 08:20`;
+				const startStr = `${startTime.getMonth() + 1}/${startTime.getDate()}(${weekDays[startTime.getDay() - 1]}) 08:20`;
 				return alert(`신청 기간이 아닙니다. ${startStr}부터 신청 가능합니다.`);
 			}
 			if (now > endTime) {
-				const endStr = endTime.getDay() === 5 ? '금요일' : '수업 전날';
+				const endStr = dayOfWeek === 1 ? '금요일' : '수업 전날';
 				return alert(`신청 기간이 종료되었습니다. (${endStr} 15:45 종료)`);
 			}
 
