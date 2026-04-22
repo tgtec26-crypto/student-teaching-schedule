@@ -44,7 +44,7 @@
 					<div class="step-num">2</div>
 					<div class="step-content">
 						<h3>일과 시간 내 신청 제한 (08:20 ~ 16:20)</h3>
-						<p>교사들의 휴식권 보장을 위해 <strong>매일 오전 8시 20분부터 오후 4시 20분 사이</strong>에만 신청 버튼이 활성화됩니다.</p>
+						<p><strong>매일 오전 8시 20분부터 오후 4시 20분 사이</strong>에만 신청 버튼이 활성화됩니다.</p>
 						<p class="negative">저녁, 밤, 새벽 시간에는 신청이 불가능합니다.</p>
 					</div>
 				</div>
