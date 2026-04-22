@@ -354,8 +354,8 @@
 				{:else}
 					<div class="week-selector">
 						<button class="week-nav-btn" disabled={currentWeekIndex === 0} onclick={() => currentWeekIndex--}><ChevronLeft size={20} /></button>
-						<div class="week-info"><span class="week-label">{currentWeekIndex + 1}주차</span></div>
-						<button class="week-nav-btn" disabled={currentWeekIndex === 3} onclick={() => currentWeekIndex++}><ChevronRight size={20} /></button>
+						<div class="week-info"><span class="week-label">{getWeekLabel(currentWeekIndex)}</span></div>
+						<button class="week-nav-btn" disabled={currentWeekIndex === 5} onclick={() => currentWeekIndex++}><ChevronRight size={20} /></button>
 					</div>
 
 					<div class="timetable-wrapper">

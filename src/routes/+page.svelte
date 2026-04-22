@@ -385,8 +385,8 @@
 								<div class="h-center">
 									<div class="nav-unit-box mini">
 										<button class="arrow" disabled={currentWeekIndex === 0} onclick={prevWeek}><ChevronLeft size={16} /></button>
-										<span class="val week">{currentWeekIndex + 1}주차</span>
-										<button class="arrow" disabled={currentWeekIndex === 3} onclick={nextWeek}><ChevronRight size={16} /></button>
+										<span class="val week">{getWeekLabel(currentWeekIndex)}</span>
+										<button class="arrow" disabled={currentWeekIndex === 5} onclick={nextWeek}><ChevronRight size={16} /></button>
 									</div>
 								</div>
 								<div class="h-right">
