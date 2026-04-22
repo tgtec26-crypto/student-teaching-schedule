@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { BookOpen, Calendar, Clock, AlertCircle, UserCheck, Users, Lock, CheckCircle2 } from 'lucide-svelte';
+	import { BookOpen, Calendar, Clock, AlertCircle, UserCheck, Users, Lock, CheckCircle2, Bell } from 'lucide-svelte';
 	import { isSupervisor, isAdmin, isStudent } from '$lib/firebase';
 </script>
 
@@ -82,6 +82,25 @@
 						<h3>참관 차단</h3>
 						<p>부득이하게 참관이 어려운 특정 교시가 있다면 해당 슬롯을 클릭하여 '차단' 상태로 변경할 수 있습니다.</p>
 					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="guide-section">
+			<h2><Bell size={20} /> 알림 안내</h2>
+			<div class="grid">
+				<div class="info-box">
+					<h3>신청 및 처리 알림</h3>
+					<p><strong>지도교사</strong>: 새로운 참관 신청/취소 시 구글 챗 실시간 알림</p>
+					<p><strong>실습생</strong>: 신청 결과(승인/거부) 이메일 자동 발송</p>
+				</div>
+				<div class="info-box">
+					<h3>수업 시작 전 알림</h3>
+					<p>수업 시작 전 리마인드 알림을 받을 수 있습니다. 상단 이름 옆 <strong>벨 모양 아이콘(🔔)</strong>을 클릭하여 설정하세요.</p>
+					<ul>
+						<li>알림 ON/OFF 선택 가능</li>
+						<li>수업 시작 몇 분 전(예: 10분 전)에 받을지 설정 가능</li>
+					</ul>
 				</div>
 			</div>
 		</section>

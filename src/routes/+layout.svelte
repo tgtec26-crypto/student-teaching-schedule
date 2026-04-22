@@ -64,6 +64,9 @@
 						<HelpCircle size={18} />
 						<span class="btn-label">참고</span>
 					</a>
+					<a href="/settings" class="btn-settings" title="알림 설정">
+						<Bell size={18} />
+					</a>
 					<span class="user-name">{$user.displayName}</span>
 					<button class="btn-logout" onclick={logout} title="로그아웃">
 						<LogOut size={18} />
