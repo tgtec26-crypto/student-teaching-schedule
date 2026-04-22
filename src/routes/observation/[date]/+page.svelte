@@ -280,7 +280,7 @@
 				await deleteDoc(doc(db, 'observation_applications', existingApp.id));
 			}
 		} else {
-			// 신청 기간 제한 로직 (영업일 및 공휴일 반영)
+			// 신청 기간 제한 로직 (수업일 및 공휴일 반영)
 			const now = new Date();
 			const nowStr = now.toISOString().split('T')[0];
 			const nowDay = now.getDay();
@@ -301,16 +301,16 @@
 				return day === 0 || day === 6 || systemHolidays.includes(s);
 			};
 
-			// 1. 마감 시간 계산: 영업일 기준 1일 전 15:45
+			// 1. 마감 시간 계산: 수업일 기준 1일 전 16:20
 			let endTime = new Date(lessonDate);
 			let endCount = 0;
 			while (endCount < 1) {
 				endTime.setDate(endTime.getDate() - 1);
 				if (!isClosed(endTime)) endCount++;
 			}
-			endTime.setHours(15, 45, 0, 0);
+			endTime.setHours(16, 20, 0, 0);
 
-			// 2. 시작 시간 계산: 영업일 기준 3일 전 08:20
+			// 2. 시작 시간 계산: 수업일 기준 3일 전 08:20
 			let startTime = new Date(lessonDate);
 			let startCount = 0;
 			while (startCount < 3) {
