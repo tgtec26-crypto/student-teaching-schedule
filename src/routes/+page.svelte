@@ -693,7 +693,7 @@
 		.val.date { width: 118px; font-size: 0.9rem; }
 
 		/* 시간표 래퍼 */
-		.timetable-wrapper { padding: 0.75rem 0.25rem; -webkit-overflow-scrolling: touch; }
+		.timetable-wrapper { padding: 0.75rem 0.25rem; }
 
 		/* 컬럼 120px → 6반 포함 총 794px, iPhone 12 가로(828px 가용)에서 34px 여유 ✓ */
 		.timetable th { width: 120px; font-size: 0.82rem; padding: 0.45rem 0.2rem; border-radius: 8px 8px 0 0; }
@@ -707,21 +707,6 @@
 
 		.teacher-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.25rem; }
 		.back-btn { position: static; margin-bottom: 0.5rem; }
-	}
-
-	/* ─── ≤430px: iPhone 세로 모드 전용 (SE 375px ~ Pro Max 430px) ─── */
-	@media (max-width: 430px) {
-		/* 컬럼 85px → 5반(교사별/내 일정) 총 ~481px, iPhone SE(375px)에서 106px 스크롤 */
-		.timetable th { width: 85px; font-size: 0.7rem; padding: 0.3rem 0.1rem; }
-		.timetable td { width: 85px; min-width: 85px; max-width: 85px; height: 62px; }
-		.sticky-col { width: 24px !important; min-width: 24px !important; max-width: 24px !important; }
-		.slot-btn, .slot-display { padding: 0.24rem 0.18rem; gap: 0.12rem; }
-		.subject { font-size: 0.52rem; padding: 0.04rem 0.17rem; }
-		.teacher, .class { font-size: 0.57rem; }
-		.slot-footer { font-size: 0.52rem; }
-		.nav-item { padding: 0.25rem 0.38rem; font-size: 0.72rem; }
-		.val.week { width: 96px; font-size: 0.75rem; }
-		.val.date { width: 84px; font-size: 0.75rem; }
 	}
 
 	/* ─── ≤600px: 소형 모바일 세로 모드 ─── */
@@ -778,10 +763,34 @@
 		.login-screen { padding: 2.5rem 1.5rem; margin-top: 0.5rem; }
 	}
 
+	/* ─── ≤430px: iPhone 세로 모드 전용 (SE 375px ~ Pro Max 430px) ─── */
+	@media (max-width: 430px) {
+		/* 컬럼 85px → 5반(교사별/내 일정) 총 ~481px, iPhone SE(375px)에서 106px 스크롤 */
+		.timetable th { width: 85px; font-size: 0.7rem; padding: 0.3rem 0.1rem; }
+		.timetable td { width: 85px; min-width: 85px; max-width: 85px; height: 62px; }
+		.sticky-col { width: 24px !important; min-width: 24px !important; max-width: 24px !important; }
+		.slot-btn, .slot-display { padding: 0.24rem 0.18rem; gap: 0.12rem; }
+		.subject { font-size: 0.52rem; padding: 0.04rem 0.17rem; }
+		.teacher, .class { font-size: 0.57rem; }
+		.slot-footer { font-size: 0.52rem; }
+		.nav-item { padding: 0.25rem 0.38rem; font-size: 0.72rem; }
+		.val.week { width: 96px; font-size: 0.75rem; }
+		.val.date { width: 84px; font-size: 0.75rem; }
+	}
+
 	/* 터치 기기: 호버 효과 비활성화 */
 	@media (hover: none) {
 		.slot-btn:hover { transform: none; box-shadow: none; background: none; border-color: transparent; z-index: auto; }
 		.teacher-card:hover { transform: none; border-color: #eef2f6; box-shadow: 0 4px 10px rgba(0,0,0,0.06); }
+	}
+
+	/* 다크 모드 + 포인터 기기: 슬롯 호버 (touch 기기 재활성화 방지) */
+	@media (prefers-color-scheme: dark) and (hover: hover) {
+		.slot-btn:hover {
+			background: #1e2a4a;
+			border-color: #3b82f6;
+			box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+		}
 	}
 
 	/* ════════════════════════════════════════
@@ -835,11 +844,6 @@
 		.res-msg { color: #374151; }
 
 		/* 슬롯 버튼 */
-		.slot-btn:hover {
-			background: #1e2a4a;
-			border-color: #3b82f6;
-			box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-		}
 		.slot-btn.mine, .slot-display.mine {
 			background: #052e16;
 			border-color: #16a34a;
@@ -862,7 +866,7 @@
 		}
 		.teacher-card:hover { border-color: #3b82f6; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5); }
 		.teacher-name { color: #e2e8f0; }
-		.teacher-subject-badge { background-color: rgba(255, 255, 255, 0.12) !important; color: #cbd5e1; }
+		.teacher-subject-badge { background-color: rgba(255, 255, 255, 0.12); color: #cbd5e1; }
 
 		/* 교사 시간표 뷰 헤더 */
 		.back-btn-static { background: #1e2a4a; color: #94a3b8; }
