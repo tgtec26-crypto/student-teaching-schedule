@@ -577,8 +577,8 @@
 	.arrow:hover:not(:disabled) { background: #1e293b; color: white; border-color: #1e293b; }
 	.arrow:disabled { opacity: 0.2; cursor: not-allowed; }
 	.val { font-weight: 900; font-size: 1rem; color: #1e293b; text-align: center; }
-	.val.week { min-width: 60px; }
-	.val.date { min-width: 120px; }
+	.val.week { width: 160px; padding: 0 0.5rem; flex-shrink: 0; }
+	.val.date { width: 140px; flex-shrink: 0; }
 
 	/* Teacher Grid */
 	.teacher-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0.3rem; margin-top: 1rem; }
@@ -596,9 +596,9 @@
 	.back-btn-static { padding: 0.4rem 0.8rem; background: #f1f5f9; border: none; border-radius: 8px; font-weight: 800; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
 	.teacher-title-static { font-size: 1.4rem; font-weight: 900; color: #1e293b; margin: 0; text-align: right; }
 	
-	.nav-unit-box.mini { padding: 0.25rem; border-radius: 50px; background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-	.nav-unit-box.mini .arrow { width: 28px; height: 28px; }
-	.nav-unit-box.mini .val { font-size: 0.9rem; min-width: 50px; }
+	.nav-unit-box.mini { padding: 0.25rem; border-radius: 50px; background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); flex-shrink: 0; }
+	.nav-unit-box.mini .arrow { width: 28px; height: 28px; flex-shrink: 0; }
+	.nav-unit-box.mini .val { font-size: 0.9rem; width: 140px; flex-shrink: 0; }
 
 	.timetable-wrapper { background: white; border-radius: 20px; overflow-x: auto; padding: 1.5rem; border: 1px solid #eef2f6; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
 	.timetable { border-collapse: separate; border-spacing: 6px 0; width: auto; table-layout: fixed; margin: 0 auto; }

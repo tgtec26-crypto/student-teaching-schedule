@@ -53,6 +53,12 @@
 
 	const restrictedDates = ['2026-05-04', '2026-05-05', '2026-05-22', '2026-05-25', '2026-05-29'];
 
+	function getWeekLabel(index: number) {
+		if (index === 0) return '-2주차 (테스트)';
+		if (index === 1) return '-1주차 (테스트)';
+		return `${index - 1}주차`;
+	}
+
 	// Subject Color Mapping
 	const subjectColors: Record<string, string> = {
 		국어: '#fecaca', 한문: '#fecaca', 수학: '#bbf7d0', 도덕: '#e9d5ff',
@@ -117,7 +123,7 @@
 
 	$effect(() => {
 		const qApps = query(collection(db, 'observation_applications'), 
-			where('date', '>=', allWeekDates[0]), where('date', '<=', allWeekDates[19]));
+			where('date', '>=', allWeekDates[0]), where('date', '<=', allWeekDates[29]));
 		return onSnapshot(qApps, (snapshot) => {
 			allApplications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 			loading = false;
@@ -455,9 +461,9 @@
 	.btn-action { display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.7rem; border-radius: 6px; cursor: pointer; font-weight: 800; border: 1.5px solid #cbd5e1; background: white; font-size: 0.85rem; color: #1e293b; transition: all 0.2s; line-height: 1; }
 	.btn-action:hover { background: #f1f5f9; border-color: #94a3b8; }
 	.btn-action.on { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
-	.week-selector { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 0.4rem; background: #f1f5f9; border-bottom: 1px solid #eee; }
-	.week-nav-btn { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 1px solid #ccc; background: white; display: flex; align-items: center; justify-content: center; padding: 0; }
-	.week-label { font-weight: 900; color: var(--header-bg); }
+	.week-selector { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.4rem; background: #f1f5f9; border-bottom: 1px solid #eee; }
+	.week-nav-btn { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 1px solid #ccc; background: white; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0; }
+	.week-label { font-weight: 900; color: var(--header-bg); width: 160px; text-align: center; display: inline-block; flex-shrink: 0; }
 	.timetable-wrapper { overflow-x: auto; padding: 1.5rem; }
 	.timetable { border-collapse: separate; border-spacing: 6px 0; width: auto; table-layout: fixed; margin: 0 auto; }
 	.timetable th { background: #283151; color: white; padding: 0.5rem; font-size: 0.85rem; width: 210px; border-radius: 12px 12px 0 0; border: none; }
