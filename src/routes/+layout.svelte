@@ -313,6 +313,15 @@
 		.user-name { white-space: nowrap; }
 	}
 
+	/* ─── 다크 모드 ─── */
+	@media (prefers-color-scheme: dark) {
+		.header-container { border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+		.btn-login { background-color: var(--accent-green); color: #0d1128; font-weight: 900; }
+		.user-info { background: rgba(255, 255, 255, 0.08); }
+		.top-btn { border-color: rgba(255, 255, 255, 0.22); }
+		.top-btn.supervisor { color: #fbbf24; border-color: #fbbf24; }
+	}
+
 	/* ─── ≤600px: 소형 모바일 세로 모드 추가 압축 ─── */
 	@media (max-width: 600px) {
 		.header-container { padding: 0.4rem 0.65rem; }

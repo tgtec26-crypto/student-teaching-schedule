@@ -783,4 +783,105 @@
 		.slot-btn:hover { transform: none; box-shadow: none; background: none; border-color: transparent; z-index: auto; }
 		.teacher-card:hover { transform: none; border-color: #eef2f6; box-shadow: 0 4px 10px rgba(0,0,0,0.06); }
 	}
+
+	/* ════════════════════════════════════════
+	   다크 모드
+	════════════════════════════════════════ */
+	@media (prefers-color-scheme: dark) {
+		/* 전체 배경 */
+		.main-hub { background: #0f1117; }
+
+		/* 네비 탭 바 */
+		.integrated-nav-row {
+			background: #111827;
+			border-bottom-color: #2d3748;
+			box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+		}
+		.nav-item { color: #94a3b8; }
+		.nav-item:hover { color: #e2e8f0; background: #1e2a4a; }
+		.nav-item.active { background: #1e3a5f; color: #93c5fd; }
+		.v-line { background: #2d3748; }
+
+		/* 주차·날짜 네비 */
+		.nav-unit-box {
+			background: #1a1f35;
+			border-color: #2d3748;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+		}
+		.arrow { background: #1e2a4a; border-color: #374151; color: #94a3b8; }
+		.arrow:hover:not(:disabled) { background: #e2e8f0; color: #111827; border-color: #e2e8f0; }
+		.val { color: #e2e8f0; }
+		.control-divider { background: #2d3748; }
+
+		/* 시간표 래퍼 */
+		.timetable-wrapper {
+			background: #1a1f35;
+			border-color: #2d3748;
+			box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+		}
+
+		/* 시간표 헤더 행 */
+		.timetable th { background: #1e2a4a; }
+
+		/* 시간표 데이터 셀 */
+		.timetable td { border-color: #2d3748; background: #1a1f35; }
+
+		/* 교시 고정 열 */
+		.sticky-col { background: #1e2a4a !important; }
+
+		/* 빈 슬롯 배경 */
+		.slot-cell.empty { background: #161d30; }
+		.slot-cell.restricted { background: #111827; }
+		.res-msg { color: #374151; }
+
+		/* 슬롯 버튼 */
+		.slot-btn:hover {
+			background: #1e2a4a;
+			border-color: #3b82f6;
+			box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+		}
+		.slot-btn.mine, .slot-display.mine {
+			background: #052e16;
+			border-color: #16a34a;
+		}
+		.slot-btn.mine:hover { border-color: #3b82f6; }
+
+		/* 슬롯 내부 텍스트 */
+		.teacher, .class { color: #94a3b8; }
+		.slot-footer { color: #4b5563; }
+
+		/* 내 일정 카드 */
+		.my-slot-card { background: #1e2a4a; }
+		.slot-class { color: #94a3b8; }
+
+		/* 교사 카드 */
+		.teacher-card {
+			background-color: #1e2235 !important;
+			border-color: #2d3748;
+			box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+		}
+		.teacher-card:hover { border-color: #3b82f6; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5); }
+		.teacher-name { color: #e2e8f0; }
+		.teacher-subject-badge { background-color: rgba(255, 255, 255, 0.12) !important; color: #cbd5e1; }
+
+		/* 교사 시간표 뷰 헤더 */
+		.back-btn-static { background: #1e2a4a; color: #94a3b8; }
+		.back-btn-static:hover { background: #2d3748; color: #e2e8f0; }
+		.teacher-title-static { color: #e2e8f0; }
+
+		/* 로그인·로딩 화면 */
+		.card { background: #1a1f35; border-color: #2d3748; }
+		.loading-state { color: #94a3b8; }
+		.login-screen h2 { color: #e2e8f0; }
+		.login-screen p { color: #94a3b8; }
+
+		/* 신청 확인 모달 */
+		.note-modal-card { background: #1a1f35; }
+		.board-style { border-color: #374151; }
+		.note-body { background: #111827; }
+		.note-content { color: #e2e8f0; }
+		.note-footer { background: #1a1f35; border-top-color: #2d3748; }
+		.btn-cancel-note { background: #2d3748; color: #94a3b8; }
+		.btn-cancel-note:hover { background: #374151; color: #e2e8f0; }
+	}
 </style>

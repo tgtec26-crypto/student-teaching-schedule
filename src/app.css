@@ -95,3 +95,25 @@ body {
 button {
 	font-family: inherit;
 }
+
+/* ─── 다크 모드: CSS 변수 오버라이드 ─── */
+@media (prefers-color-scheme: dark) {
+	:root {
+		--header-bg: #0d1128;
+		--accent-green: #7dff80;
+		--card-bg: #1a1f35;
+		--text-main: #e2e8f0;
+		--text-muted: #94a3b8;
+		--bg-light: #0f1117;
+		--danger: #f87171;
+	}
+	body {
+		background-color: #0f1117;
+		color: #e2e8f0;
+	}
+	.card {
+		background: #1a1f35;
+		border-color: #2d3748;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+	}
+}
