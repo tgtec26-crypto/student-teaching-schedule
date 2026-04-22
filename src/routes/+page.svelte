@@ -36,7 +36,7 @@
 	function getDefaultDate() {
 		const today = new Date();
 		const todayStr = today.toISOString().split('T')[0];
-		if (todayStr < '2026-05-06') return '2026-05-06';
+		if (todayStr < '2026-04-20') return '2026-04-20';
 		if (todayStr > '2026-05-29') return '2026-05-29';
 		const dayOfWeek = today.getDay();
 		if (dayOfWeek === 0 || dayOfWeek === 6) {
@@ -54,6 +54,8 @@
 	let currentWeekIndex = $state(0);
 
 	const allWeekDates = [
+		'2026-04-20', '2026-04-21', '2026-04-22', '2026-04-23', '2026-04-24',
+		'2026-04-27', '2026-04-28', '2026-04-29', '2026-04-30', '2026-05-01',
 		'2026-05-04', '2026-05-05', '2026-05-06', '2026-05-07', '2026-05-08',
 		'2026-05-11', '2026-05-12', '2026-05-13', '2026-05-14', '2026-05-15',
 		'2026-05-18', '2026-05-19', '2026-05-20', '2026-05-21', '2026-05-22',
@@ -74,7 +76,7 @@
 	const weekDates = $derived(allWeekDates.slice(currentWeekIndex * 5, (currentWeekIndex + 1) * 5));
 
 	function prevWeek() { if (currentWeekIndex > 0) { currentWeekIndex--; date = allWeekDates[currentWeekIndex * 5]; } }
-	function nextWeek() { if (currentWeekIndex < 3) { currentWeekIndex++; date = allWeekDates[currentWeekIndex * 5]; } }
+	function nextWeek() { if (currentWeekIndex < 5) { currentWeekIndex++; date = allWeekDates[currentWeekIndex * 5]; } }
 	function prevDate() {
 		const idx = allWeekDates.indexOf(date);
 		if (idx > 0) date = allWeekDates[idx - 1];
