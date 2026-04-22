@@ -341,8 +341,8 @@
 						{#if teacherRestrictions.includes(selectedTeacher)}<span class="global-restricted-tag"><Lock size={12} /> 차단됨</span>{/if}
 					</div>
 					<div class="header-actions">
-						<button class="btn-action" class:on={defaultNote} onclick={updateDefaultNote}><AlertCircle size={16} /> 기본 안내 {defaultNote ? 'ON' : 'OFF'}</button>
-						<button class="btn-action" class:on={autoApprove} onclick={toggleAutoApprove}><UserCheck size={16} /> 자동 승인 {autoApprove ? 'ON' : 'OFF'}</button>
+						<button class="btn-action" class:on={!!defaultNote} onclick={updateDefaultNote}><AlertCircle size={16} /> 기본 안내 {defaultNote ? 'ON' : 'OFF'}</button>
+						<button class="btn-action" class:on={autoApprove === true} onclick={toggleAutoApprove}><UserCheck size={16} /> 자동 승인 {autoApprove ? 'ON' : 'OFF'}</button>
 						{#if $isAdmin}<button class="btn-action" onclick={() => selectedTeacher = ''}><Users size={16} /> 목록으로</button>{/if}
 					</div>
 				</div>
