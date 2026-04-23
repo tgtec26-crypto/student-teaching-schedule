@@ -26,6 +26,31 @@
 	import { onMount } from 'svelte';
 	import { teacherWebhooks } from '$lib/teacherWebhooks';
 	import { teacherMetadata } from '$lib/teacherData';
+	import { getSupervisedStudents } from '$lib/supervisionMapping';
+
+	// 메시지 입력 모달 상태
+	let showDefaultNoteModal = $state(false);
+	let showLessonNoteModal = $state(false);
+	let noteInput = $state('');
+	let editingNoteContext = $state<{ date: string; period: string; classId: string } | null>(null);
+
+	const supervisedStudents = $derived(selectedTeacher ? getSupervisedStudents(selectedTeacher) : []);
+
+	function appendStudentSentence(studentName: string) {
+		const newSentence = `${studentName} 선생님이 수업합니다.`;
+
+		// 이미 담당 실습생 문장이 포함되어 있으면 이름만 치환
+		for (const s of supervisedStudents) {
+			const existing = `${s} 선생님이 수업합니다.`;
+			if (noteInput.includes(existing)) {
+				noteInput = noteInput.replace(existing, newSentence);
+				return;
+			}
+		}
+
+		// 없으면 기존 텍스트 뒤에 추가
+		noteInput = noteInput.trim() ? `${noteInput.trim()} ${newSentence}` : newSentence;
+	}
 
 	let selectedTeacher = $state('');
 	let autoApprove = $state(false);
@@ -150,39 +175,54 @@
 		return () => { unsubRestricted(); unsubSettings(); unsubNotes(); };
 	});
 
-	async function updateDefaultNote() {
+	function openDefaultNoteModal() {
+		if (!selectedTeacher) return;
+		noteInput = defaultNote || '';
+		showDefaultNoteModal = true;
+	}
+
+	async function saveDefaultNote() {
 		if (!selectedTeacher) return;
 		const teacherKey = selectedTeacher.trim();
-		const newMessage = prompt('모든 수업에 공통으로 적용될 기본 안내 메시지를 입력하세요 (비우면 삭제):', defaultNote);
-		if (newMessage === null) return;
-		
 		try {
-			await setDoc(doc(db, 'teacher_settings', teacherKey), { defaultNote: newMessage.trim() }, { merge: true });
-			alert('기본 안내 메시지가 저장되었습니다.');
+			await setDoc(doc(db, 'teacher_settings', teacherKey), { defaultNote: noteInput.trim() }, { merge: true });
+			showDefaultNoteModal = false;
 		} catch (e) {
 			console.error(e);
 			alert('저장에 실패했습니다.');
 		}
 	}
 
-	async function updateLessonNote(date: string, period: string, classId: string, currentNote: string) {
+	function openLessonNoteModal(date: string, period: string, classId: string, currentNote: string) {
+		editingNoteContext = { date, period, classId };
+		noteInput = currentNote || '';
+		showLessonNoteModal = true;
+	}
+
+	async function saveLessonNote() {
+		if (!editingNoteContext) return;
+		const { date, period, classId } = editingNoteContext;
 		const teacherKey = selectedTeacher.trim();
 		const noteId = `${teacherKey}_${date}_${period}_${classId}`;
-		const newMessage = prompt('실습생에게 전달할 메시지를 입력하세요 (비우면 삭제):', currentNote || '');
-		
-		if (newMessage === null) return;
-		
-		if (newMessage.trim() === '') {
-			await deleteDoc(doc(db, 'lesson_notes', noteId));
-		} else {
-			await setDoc(doc(db, 'lesson_notes', noteId), {
-				teacher: teacherKey,
-				date,
-				period,
-				classId,
-				message: newMessage.trim(),
-				updatedAt: new Date()
-			});
+
+		try {
+			if (noteInput.trim() === '') {
+				await deleteDoc(doc(db, 'lesson_notes', noteId));
+			} else {
+				await setDoc(doc(db, 'lesson_notes', noteId), {
+					teacher: teacherKey,
+					date,
+					period,
+					classId,
+					message: noteInput.trim(),
+					updatedAt: new Date()
+				});
+			}
+			showLessonNoteModal = false;
+			editingNoteContext = null;
+		} catch (e) {
+			console.error(e);
+			alert('저장에 실패했습니다.');
 		}
 	}
 
@@ -349,7 +389,7 @@
 						{#if teacherRestrictions.includes(selectedTeacher)}<span class="global-restricted-tag"><Lock size={12} /> 차단됨</span>{/if}
 					</div>
 					<div class="header-actions">
-						<button class="btn-action" class:on={!!defaultNote} onclick={updateDefaultNote}><AlertCircle size={16} /> 기본 안내 {defaultNote ? 'ON' : 'OFF'}</button>
+						<button class="btn-action" class:on={!!defaultNote} onclick={openDefaultNoteModal}><AlertCircle size={16} /> 기본 안내 {defaultNote ? 'ON' : 'OFF'}</button>
 						<button class="btn-action" class:on={autoApprove === true} onclick={toggleAutoApprove}><UserCheck size={16} /> 자동 승인 {autoApprove ? 'ON' : 'OFF'}</button>
 						{#if $isAdmin}<button class="btn-action" onclick={() => selectedTeacher = ''}><Users size={16} /> 목록으로</button>{/if}
 					</div>
@@ -399,7 +439,7 @@
 															<span 
 																class="subject clickable" 
 																style="background-color: {getSubjectColor(slot.subject)}"
-																onclick={() => updateLessonNote(d, period, slot.classId, hasNote)}
+																onclick={() => openLessonNoteModal(d, period, slot.classId, hasNote)}
 																role="button"
 																tabindex="0"
 																title="메시지 입력/수정"
@@ -444,6 +484,64 @@
 		{/if}
 	{/if}
 </div>
+
+{#if showDefaultNoteModal}
+	<div class="msg-modal-overlay" onclick={() => showDefaultNoteModal = false} role="presentation">
+		<div class="msg-modal-card" onclick={(e) => e.stopPropagation()} role="presentation">
+			<div class="msg-modal-header">
+				<AlertCircle size={20} />
+				<h3>기본 안내 메시지</h3>
+			</div>
+			<div class="msg-modal-body">
+				<p class="msg-help">모든 수업에 공통으로 적용됩니다. 개별 수업 메시지가 있으면 해당 수업에는 개별 메시지가 우선 표시됩니다.</p>
+				<textarea
+					bind:value={noteInput}
+					placeholder="예) 수업 시작 5분 전까지 교실 뒤쪽에 조용히 입실해주세요."
+					rows="4"
+				></textarea>
+			</div>
+			<div class="msg-modal-footer">
+				<button class="msg-btn-cancel" onclick={() => showDefaultNoteModal = false}>취소</button>
+				<button class="msg-btn-save" onclick={saveDefaultNote}>저장</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if showLessonNoteModal && editingNoteContext}
+	<div class="msg-modal-overlay" onclick={() => showLessonNoteModal = false} role="presentation">
+		<div class="msg-modal-card" onclick={(e) => e.stopPropagation()} role="presentation">
+			<div class="msg-modal-header">
+				<AlertCircle size={20} />
+				<h3>개별 수업 메시지</h3>
+			</div>
+			<div class="msg-modal-body">
+				<p class="msg-context">{editingNoteContext.date} · {editingNoteContext.period}교시 · {editingNoteContext.classId.substring(0, 1)}-{parseInt(editingNoteContext.classId.substring(2))}반</p>
+				<textarea
+					bind:value={noteInput}
+					placeholder="실습생에게 전달할 안내 메시지를 입력하세요. 비우고 저장하면 삭제됩니다."
+					rows="4"
+				></textarea>
+				{#if supervisedStudents.length > 0}
+					<div class="student-quick-insert">
+						<span class="quick-label">빠른 입력:</span>
+						<div class="student-btn-group">
+							{#each supervisedStudents as student}
+								<button class="student-btn" type="button" onclick={() => appendStudentSentence(student)}>
+									{student}
+								</button>
+							{/each}
+						</div>
+					</div>
+				{/if}
+			</div>
+			<div class="msg-modal-footer">
+				<button class="msg-btn-cancel" onclick={() => showLessonNoteModal = false}>취소</button>
+				<button class="msg-btn-save" onclick={saveLessonNote}>저장</button>
+			</div>
+		</div>
+	</div>
+{/if}
 
 <style>
 	.full-width { max-width: 1400px !important; margin: 0 auto; padding: 0 2rem 2rem 2rem; }
@@ -504,6 +602,30 @@
 	.error-state { text-align: center; padding: 5rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
 	.btn-primary { background: var(--header-bg); color: white; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 800; }
 
+	/* 메시지 입력 모달 */
+	.msg-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+	.msg-modal-card { background: white; width: 90%; max-width: 520px; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.25); animation: modalIn 0.25s ease-out; }
+	.msg-modal-header { background: #283151; color: white; padding: 0.9rem 1.2rem; display: flex; align-items: center; gap: 0.6rem; }
+	.msg-modal-header h3 { margin: 0; font-size: 1.05rem; font-weight: 900; }
+	.msg-modal-body { padding: 1.2rem 1.4rem; display: flex; flex-direction: column; gap: 0.8rem; }
+	.msg-help { margin: 0; font-size: 0.82rem; color: #64748b; line-height: 1.5; }
+	.msg-context { margin: 0; font-size: 0.9rem; font-weight: 800; color: var(--header-bg); padding: 0.4rem 0.7rem; background: #f1f5f9; border-radius: 6px; display: inline-block; width: fit-content; }
+	.msg-modal-body textarea { width: 100%; padding: 0.7rem; border: 1.5px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 0.95rem; line-height: 1.5; resize: vertical; box-sizing: border-box; }
+	.msg-modal-body textarea:focus { outline: none; border-color: var(--header-bg); }
+	.student-quick-insert { display: flex; flex-direction: column; gap: 0.4rem; padding-top: 0.4rem; border-top: 1px dashed #cbd5e1; }
+	.quick-label { font-size: 0.8rem; font-weight: 700; color: #64748b; }
+	.student-btn-group { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+	.student-btn { padding: 0.35rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; cursor: pointer; transition: all 0.15s; }
+	.student-btn:hover { background: #1d4ed8; color: white; transform: translateY(-1px); }
+	.msg-modal-footer { padding: 0.9rem 1.2rem; display: flex; justify-content: flex-end; gap: 0.6rem; border-top: 1px solid #e2e8f0; background: #f8fafc; }
+	.msg-btn-cancel, .msg-btn-save { padding: 0.55rem 1.2rem; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 0.9rem; border: none; transition: all 0.15s; }
+	.msg-btn-cancel { background: #e2e8f0; color: #475569; }
+	.msg-btn-cancel:hover { background: #cbd5e1; }
+	.msg-btn-save { background: var(--header-bg); color: white; }
+	.msg-btn-save:hover { background: #1e255a; transform: translateY(-1px); }
+
+	@keyframes modalIn { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
 	/* ════════════════════════════════════════
 	   다크 모드
 	════════════════════════════════════════ */
@@ -560,5 +682,19 @@
 		.applicant-list { border-top-color: #374151; }
 		.app-item { color: #e2e8f0; }
 		.app-item.DECLINED { color: #4b5563; }
+
+		/* 메시지 입력 모달 */
+		.msg-modal-card { background: #1a1f35; }
+		.msg-help { color: #94a3b8; }
+		.msg-context { background: #1e2a4a; color: #e2e8f0; }
+		.msg-modal-body textarea { background: #111827; border-color: #374151; color: #e2e8f0; }
+		.msg-modal-body textarea:focus { border-color: #3b82f6; }
+		.student-quick-insert { border-top-color: #374151; }
+		.quick-label { color: #94a3b8; }
+		.student-btn { background: #1e2a4a; color: #93c5fd; border-color: #374151; }
+		.student-btn:hover { background: #1d4ed8; color: white; border-color: #1d4ed8; }
+		.msg-modal-footer { background: #111827; border-top-color: #374151; }
+		.msg-btn-cancel { background: #2d3748; color: #cbd5e1; }
+		.msg-btn-cancel:hover { background: #374151; }
 	}
 </style>
