@@ -461,8 +461,10 @@
 	.btn-action { display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.7rem; border-radius: 6px; cursor: pointer; font-weight: 800; border: 1.5px solid #cbd5e1; background: white; font-size: 0.85rem; color: #1e293b; transition: all 0.2s; line-height: 1; }
 	.btn-action:hover { background: #f1f5f9; border-color: #94a3b8; }
 	.btn-action.on { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
-	.week-selector { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.4rem; background: #f1f5f9; border-bottom: 1px solid #eee; }
-	.week-nav-btn { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 1px solid #ccc; background: white; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0; }
+	.week-selector { display: flex; align-items: center; justify-content: center; gap: 0.8rem; padding: 0.6rem; border-bottom: 1px solid #eee; }
+	.week-nav-btn { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 1px solid #cbd5e1; background: white; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0; color: #1e293b; transition: all 0.2s; }
+	.week-nav-btn:hover:not(:disabled) { background: #1e293b; color: white; border-color: #1e293b; }
+	.week-nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
 	.week-label { font-weight: 900; color: var(--header-bg); width: 160px; text-align: center; display: inline-block; flex-shrink: 0; }
 	.timetable-wrapper { overflow-x: auto; padding: 1.5rem; }
 	.timetable { border-collapse: separate; border-spacing: 6px 0; width: auto; table-layout: fixed; margin: 0 auto; }
@@ -530,9 +532,9 @@
 		.btn-action.on { background: #064e3b; color: #6ee7b7; border-color: #065f46; }
 
 		/* 주차 선택 */
-		.week-selector { background: #111827; border-bottom-color: #2d3748; }
+		.week-selector { border-bottom-color: #2d3748; }
 		.week-nav-btn { background: #1e2a4a; border-color: #374151; color: #e2e8f0; }
-		.week-nav-btn:hover:not(:disabled) { background: #2d3748; }
+		.week-nav-btn:hover:not(:disabled) { background: #e2e8f0; color: #111827; border-color: #e2e8f0; }
 		.week-label { color: #e2e8f0; }
 
 		/* 시간표 */

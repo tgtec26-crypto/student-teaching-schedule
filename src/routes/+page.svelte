@@ -383,10 +383,10 @@
 									<button class="back-btn-static" onclick={() => selectedTeacher = null}><ChevronLeft size={18} /> 목록</button>
 								</div>
 								<div class="h-center">
-									<div class="nav-unit-box mini">
-										<button class="arrow" disabled={currentWeekIndex === 0} onclick={prevWeek}><ChevronLeft size={16} /></button>
-										<span class="val week">{getWeekLabel(currentWeekIndex)}</span>
-										<button class="arrow" disabled={currentWeekIndex === 5} onclick={nextWeek}><ChevronRight size={16} /></button>
+									<div class="week-nav-row">
+										<button class="week-arr" disabled={currentWeekIndex === 0} onclick={prevWeek}><ChevronLeft size={18} /></button>
+										<span class="week-lbl">{getWeekLabel(currentWeekIndex)}</span>
+										<button class="week-arr" disabled={currentWeekIndex === 5} onclick={nextWeek}><ChevronRight size={18} /></button>
 									</div>
 								</div>
 								<div class="h-right">
@@ -569,7 +569,7 @@
 	.grade-tabs { display: flex; gap: 0.2rem; }
 
 	/* Attached Dual Nav */
-	.centered-nav-unit { display: flex; justify-content: center; margin-bottom: 0.2rem; margin-top: 1rem; }
+	.centered-nav-unit { display: flex; justify-content: center; margin-top: 0.2rem; margin-bottom: 0.6rem; }
 	.nav-unit-box { display: flex; align-items: center; background: white; padding: 0.3rem; border-radius: 50px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 	.control-group { display: flex; align-items: center; gap: 0.5rem; padding: 0 0.5rem; }
 	.control-divider { width: 1px; height: 20px; background: #e2e8f0; margin: 0 0.5rem; }
@@ -596,9 +596,12 @@
 	.back-btn-static { padding: 0.4rem 0.8rem; background: #f1f5f9; border: none; border-radius: 8px; font-weight: 800; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
 	.teacher-title-static { font-size: 1.4rem; font-weight: 900; color: #1e293b; margin: 0; text-align: right; }
 	
-	.nav-unit-box.mini { padding: 0.25rem; border-radius: 50px; background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); flex-shrink: 0; }
-	.nav-unit-box.mini .arrow { width: 28px; height: 28px; flex-shrink: 0; }
-	.nav-unit-box.mini .val { font-size: 0.9rem; width: 140px; flex-shrink: 0; }
+	/* 교사별 뷰 주차 네비 (캡슐 없음) */
+	.week-nav-row { display: flex; align-items: center; justify-content: center; gap: 0.8rem; }
+	.week-arr { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 1px solid #cbd5e1; background: white; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0; color: #1e293b; transition: all 0.2s; }
+	.week-arr:hover:not(:disabled) { background: #1e293b; color: white; border-color: #1e293b; }
+	.week-arr:disabled { opacity: 0.25; cursor: not-allowed; }
+	.week-lbl { font-weight: 900; font-size: 1rem; color: var(--header-bg); width: 160px; text-align: center; flex-shrink: 0; }
 
 	.timetable-wrapper { background: white; border-radius: 20px; overflow-x: auto; padding: 1.5rem; border: 1px solid #eef2f6; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
 	.timetable { border-collapse: separate; border-spacing: 6px 0; width: auto; table-layout: fixed; margin: 0 auto; }
@@ -719,7 +722,7 @@
 		.v-line { height: 13px; margin: 0 0.25rem; }
 
 		/* 주차/날짜 네비게이션 */
-		.centered-nav-unit { margin-top: 0.4rem; }
+		.centered-nav-unit { margin-top: 0.15rem; margin-bottom: 0.15rem; }
 		.nav-unit-box { padding: 0.15rem; }
 		.val.week { width: 105px; font-size: 0.78rem; }
 		.val.date { width: 92px; font-size: 0.78rem; }
@@ -750,8 +753,8 @@
 		/* 교사 시간표 헤더 */
 		.view-header-grid { gap: 0.35rem; margin-bottom: 0.4rem; margin-top: 0.35rem; }
 		.teacher-title-static { font-size: 0.95rem; }
-		.nav-unit-box.mini .val { width: 96px; font-size: 0.74rem; }
-		.nav-unit-box.mini .arrow { width: 22px; height: 22px; }
+		.week-lbl { width: 96px; font-size: 0.74rem; }
+		.week-arr { width: 22px; height: 22px; }
 		.back-btn-static { padding: 0.28rem 0.5rem; font-size: 0.74rem; }
 
 		/* 내 일정 카드 */
@@ -811,9 +814,8 @@
 		.nav-item.active { background: #1e3a5f; color: #93c5fd; }
 		.v-line { background: #2d3748; }
 
-		/* 주차·날짜 네비 */
-		.nav-unit-box,
-		.nav-unit-box.mini {
+		/* 주차·날짜 네비 (grade/my 뷰 캡슐) */
+		.nav-unit-box {
 			background: #1a1f35;
 			border-color: #2d3748;
 			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -822,6 +824,11 @@
 		.arrow:hover:not(:disabled) { background: #e2e8f0; color: #111827; border-color: #e2e8f0; }
 		.val { color: #ffffff; }
 		.control-divider { background: #2d3748; }
+
+		/* 교사별 뷰 주차 네비 */
+		.week-arr { background: #1e2a4a; border-color: #374151; color: #e2e8f0; }
+		.week-arr:hover:not(:disabled) { background: #e2e8f0; color: #111827; border-color: #e2e8f0; }
+		.week-lbl { color: #e2e8f0; }
 
 		/* 시간표 래퍼 */
 		.timetable-wrapper {
