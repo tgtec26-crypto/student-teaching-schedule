@@ -640,6 +640,90 @@
 	@keyframes modalIn { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 	/* ════════════════════════════════════════
+	   반응형 (≤1000px: 태블릿 가로, Galaxy 915px 포함)
+	════════════════════════════════════════ */
+	@media (max-width: 1000px) {
+		/* 좌우 여백 축소 + iOS safe-area */
+		.full-width {
+			padding: 0 max(0.5rem, env(safe-area-inset-right)) 1rem max(0.5rem, env(safe-area-inset-left));
+		}
+
+		/* 캘린더 헤더 (선생님 이름 + 버튼 묶음) */
+		.calendar-header-box { padding: 0.3rem 0.6rem; flex-wrap: wrap; gap: 0.35rem; }
+		.teacher-info-row { min-width: 0; gap: 0.5rem; }
+		.teacher-title-text { font-size: 0.95rem; }
+		.header-actions { gap: 0.3rem; flex-wrap: wrap; }
+		.btn-action { padding: 0.3rem 0.5rem; font-size: 0.72rem; gap: 0.25rem; }
+
+		/* 주차 네비 */
+		.week-selector { padding: 0.5rem; gap: 0.6rem; }
+		.week-label { width: 130px; font-size: 0.88rem; }
+		.week-nav-btn { width: 26px; height: 26px; }
+
+		/* 시간표 래퍼: 좌우 패딩 축소 + 터치 스크롤 */
+		.timetable-wrapper { padding: 0.75rem 0.3rem; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
+		.timetable { border-spacing: 4px 0; }
+
+		/* 컬럼 120px → 요일 5칸 총 ~648px, iPhone 12 가로(828px)에서 여유 */
+		.timetable th { width: 120px; padding: 0.4rem 0.2rem; font-size: 0.78rem; }
+		.timetable td { width: 120px; height: 72px; padding: 0.15rem; }
+		.sticky-col { width: 32px !important; min-width: 32px !important; max-width: 32px !important; }
+		.period-cell { font-size: 0.9rem; }
+
+		/* 슬롯 내용: 폰트/패딩 축소 */
+		.slot-content { padding: 0.2rem; }
+		.slot-info { margin-bottom: 0.2rem; gap: 0.15rem; }
+		.subject { font-size: 0.62rem; padding: 0.08rem 0.22rem; gap: 1px; }
+		.class-label { font-size: 0.7rem; }
+		.btn-toggle-restriction { font-size: 0.6rem; padding: 0.1rem 0.3rem; }
+		.lesson-note-preview { font-size: 0.58rem; padding: 0.08rem 0.2rem; margin-top: 0.1rem; }
+
+		/* 신청자 목록 */
+		.applicant-list { gap: 0.1rem 0.2rem; padding-top: 0.3rem; margin-top: 0.3rem; }
+		.app-item { font-size: 0.62rem; gap: 0.1rem; }
+		.btn-v, .btn-x { font-size: 0.52rem !important; padding: 1px 0 !important; }
+
+		/* 수업 없음/신청 불가 */
+		.no-class-text { font-size: 0.8rem; }
+
+		/* 교사 그리드 (Admin 목록 화면) */
+		.teacher-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.3rem; }
+		.teacher-card { padding: 0.55rem; }
+		.teacher-name { font-size: 0.88rem; }
+	}
+
+	/* ≤600px: 모바일 세로 */
+	@media (max-width: 600px) {
+		.full-width { padding: 0 max(0.3rem, env(safe-area-inset-right)) 0.8rem max(0.3rem, env(safe-area-inset-left)); }
+		.calendar-header-box { padding: 0.25rem 0.4rem; gap: 0.25rem; }
+		.teacher-title-text { font-size: 0.85rem; }
+		.btn-action { padding: 0.22rem 0.4rem; font-size: 0.65rem; gap: 0.2rem; }
+
+		.week-selector { padding: 0.35rem; gap: 0.5rem; }
+		.week-label { width: 110px; font-size: 0.78rem; }
+
+		.timetable-wrapper { padding: 0.5rem 0.2rem; }
+		.timetable { border-spacing: 3px 0; }
+		.timetable th { width: 95px; padding: 0.3rem 0.12rem; font-size: 0.7rem; }
+		.timetable td { width: 95px; height: 62px; padding: 0.1rem; }
+		.sticky-col { width: 26px !important; min-width: 26px !important; max-width: 26px !important; }
+		.period-cell { font-size: 0.78rem; }
+
+		.subject { font-size: 0.55rem; padding: 0.05rem 0.18rem; }
+		.class-label { font-size: 0.62rem; }
+		.btn-toggle-restriction { font-size: 0.54rem; padding: 0.08rem 0.22rem; }
+		.lesson-note-preview { font-size: 0.52rem; }
+		.app-item { font-size: 0.55rem; }
+		.no-class-text { font-size: 0.72rem; }
+
+		/* 교사 목록: 가로 2-3열 */
+		.teacher-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 0.25rem; }
+		.teacher-card { padding: 0.45rem 0.3rem; }
+		.teacher-name { font-size: 0.8rem; }
+		.teacher-subject-badge { font-size: 0.65rem; padding: 0.12rem 0.4rem; }
+	}
+
+	/* ════════════════════════════════════════
 	   다크 모드
 	════════════════════════════════════════ */
 	@media (prefers-color-scheme: dark) {
