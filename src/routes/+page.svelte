@@ -390,7 +390,7 @@
 									</div>
 								</div>
 								<div class="h-right">
-									<h3 class="teacher-title-static">{selectedTeacher} 선생님 시간표</h3>
+									<h3 class="teacher-title-static">{selectedTeacher} 선생님</h3>
 								</div>
 							</div>
 							<div class="timetable-wrapper">
@@ -594,7 +594,7 @@
 	.h-right { display: flex; justify-content: flex-end; }
 
 	.back-btn-static { padding: 0.4rem 0.8rem; background: #f1f5f9; border: none; border-radius: 8px; font-weight: 800; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
-	.teacher-title-static { font-size: 1.4rem; font-weight: 900; color: #1e293b; margin: 0; text-align: right; }
+	.teacher-title-static { font-size: 1.4rem; font-weight: 900; color: #1e293b; margin: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 	
 	/* 교사별 뷰 주차 네비 (캡슐 없음) */
 	.week-nav-row { display: flex; align-items: center; justify-content: center; gap: 0.8rem; }

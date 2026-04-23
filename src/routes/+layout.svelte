@@ -343,4 +343,15 @@
 		.btn-settings { padding: 0.1rem; }
 		.btn-login { padding: 0.38rem 0.65rem; font-size: 0.78rem; }
 	}
+
+	/* ─── ≤500px: 초소형 (iPhone SE 포함) - 역할 버튼 두 번째 줄로 ─── */
+	@media (max-width: 500px) {
+		.header-inner { flex-wrap: wrap; row-gap: 0.3rem; }
+		.top-left-actions {
+			order: 5;
+			flex-basis: 100%;
+			justify-content: center;
+			margin: 0;
+		}
+	}
 </style>

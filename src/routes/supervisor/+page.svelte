@@ -586,13 +586,13 @@
 	.period-cell { display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; font-weight: 900; font-size: 1.1rem; color: white; }
 	.slot-content { height: 100%; padding: 0.3rem; border: 2px solid transparent; border-radius: 6px; position: relative; }
 	.slot-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-	.subject { font-size: 0.85rem; font-weight: 900; padding: 0.2rem 0.4rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px; }
+	.subject { font-size: 0.85rem; font-weight: 900; padding: 0.2rem 0.4rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
 	.subject.clickable { cursor: pointer; transition: transform 0.1s; }
 	.subject.clickable:hover { transform: scale(1.05); }
 	.note-indicator { font-size: 0.7rem; }
 	.lesson-note-preview { font-size: 0.7rem; color: #475569; background: rgba(255,255,255,0.5); padding: 0.2rem 0.4rem; border-radius: 4px; margin-top: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; border: 1px dashed #cbd5e1; }
-	.class-label { font-size: 0.95rem; color: #1e293b; font-weight: 900; }
-	.btn-toggle-restriction { font-size: 0.8rem; cursor: pointer; padding: 0.2rem 0.5rem; border: 1.5px solid #cbd5e1; border-radius: 4px; background: white; font-weight: 800; transition: all 0.2s; }
+	.class-label { font-size: 0.95rem; color: #1e293b; font-weight: 900; white-space: nowrap; }
+	.btn-toggle-restriction { font-size: 0.8rem; cursor: pointer; padding: 0.2rem 0.5rem; border: 1.5px solid #cbd5e1; border-radius: 4px; background: white; font-weight: 800; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
 	.btn-toggle-restriction.is-available { background-color: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
 	.btn-toggle-restriction.is-available:hover { background-color: #dcfce7; }
 	.btn-toggle-restriction.is-restricted { background-color: #fff5f5; border-color: #fecaca; color: #ff7b89; }
