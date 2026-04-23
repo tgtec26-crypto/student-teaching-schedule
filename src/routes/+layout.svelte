@@ -2,7 +2,15 @@
 	import '../app.css';
 	import { page } from '$app/state';
 	import { user, login, logout, isAdmin, isSupervisor } from '$lib/firebase';
+	import { supervisorResetSignal } from '$lib/supervisorNav';
 	import { LogIn, LogOut, User as UserIcon, ArrowLeft, ShieldCheck, UserCheck, Bell, HelpCircle } from 'lucide-svelte';
+
+	// /supervisor에 이미 있는 상태에서 '지도교사' 버튼을 누르면 목록 뷰로 복귀
+	function handleSupervisorClick() {
+		if (page.url.pathname === '/supervisor') {
+			supervisorResetSignal.update((n) => n + 1);
+		}
+	}
 
 	let { children } = $props();
 
@@ -30,7 +38,7 @@
 					</a>
 				{/if}
 				{#if $isSupervisor || $isAdmin}
-					<a href="/supervisor" class="top-btn supervisor">
+					<a href="/supervisor" class="top-btn supervisor" onclick={handleSupervisorClick}>
 						<UserCheck size={14} /> 지도교사
 					</a>
 				{/if}

@@ -27,12 +27,24 @@
 	import { teacherWebhooks } from '$lib/teacherWebhooks';
 	import { teacherMetadata } from '$lib/teacherData';
 	import { getSupervisedStudents } from '$lib/supervisionMapping';
+	import { supervisorResetSignal } from '$lib/supervisorNav';
 
 	// 메시지 입력 모달 상태
 	let showDefaultNoteModal = $state(false);
 	let showLessonNoteModal = $state(false);
 	let noteInput = $state('');
 	let editingNoteContext = $state<{ date: string; period: string; classId: string } | null>(null);
+
+	let selectedTeacher = $state('');
+	let autoApprove = $state(false);
+	let defaultNote = $state('');
+	let allApplications = $state<any[]>([]);
+	const applications = $derived(allApplications.filter((app) => app.teacher === selectedTeacher));
+	let restrictions = $state<string[]>([]);
+	let teacherRestrictions = $state<string[]>([]);
+	let loading = $state(true);
+	let approvingId = $state<string | null>(null);
+	let currentWeekIndex = $state(0); // 0, 1, 2, 3 for 4 weeks
 
 	const supervisedStudents = $derived(selectedTeacher ? getSupervisedStudents(selectedTeacher) : []);
 
@@ -52,16 +64,17 @@
 		noteInput = noteInput.trim() ? `${noteInput.trim()} ${newSentence}` : newSentence;
 	}
 
-	let selectedTeacher = $state('');
-	let autoApprove = $state(false);
-	let defaultNote = $state('');
-	let allApplications = $state<any[]>([]);
-	const applications = $derived(allApplications.filter((app) => app.teacher === selectedTeacher));
-	let restrictions = $state<string[]>([]);
-	let teacherRestrictions = $state<string[]>([]);
-	let loading = $state(true);
-	let approvingId = $state<string | null>(null);
-	let currentWeekIndex = $state(0); // 0, 1, 2, 3 for 4 weeks
+	// '지도교사' 버튼 재클릭 시 목록으로 복귀 (Admin만)
+	let lastResetSignal = 0;
+	$effect(() => {
+		const current = $supervisorResetSignal;
+		if (current !== lastResetSignal) {
+			lastResetSignal = current;
+			if (current > 0 && $isAdmin) {
+				selectedTeacher = '';
+			}
+		}
+	});
 
 	const maxApplicants = 5;
 	const periods = ['1', '2', '3', '4', '5', '6', '7'];
