@@ -806,8 +806,8 @@
 			border-bottom-color: #2d3748;
 			box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
 		}
-		.nav-item { color: #94a3b8; }
-		.nav-item:hover { color: #e2e8f0; background: #1e2a4a; }
+		.nav-item { color: #ffffff; }
+		.nav-item:hover { color: #ffffff; background: #1e2a4a; }
 		.nav-item.active { background: #1e3a5f; color: #93c5fd; }
 		.v-line { background: #2d3748; }
 
@@ -817,9 +817,9 @@
 			border-color: #2d3748;
 			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 		}
-		.arrow { background: #1e2a4a; border-color: #374151; color: #94a3b8; }
+		.arrow { background: #1e2a4a; border-color: #374151; color: #ffffff; }
 		.arrow:hover:not(:disabled) { background: #e2e8f0; color: #111827; border-color: #e2e8f0; }
-		.val { color: #e2e8f0; }
+		.val { color: #ffffff; }
 		.control-divider { background: #2d3748; }
 
 		/* 시간표 래퍼 */
@@ -851,12 +851,12 @@
 		.slot-btn.mine:hover { border-color: #3b82f6; }
 
 		/* 슬롯 내부 텍스트 */
-		.teacher, .class { color: #94a3b8; }
-		.slot-footer { color: #4b5563; }
+		.teacher, .class { color: #ffffff; }
+		.slot-footer { color: #ffffff; }
 
 		/* 내 일정 카드 */
 		.my-slot-card { background: #1e2a4a; }
-		.slot-class { color: #94a3b8; }
+		.slot-class { color: #ffffff; }
 
 		/* 교사 카드 */
 		.teacher-card {
@@ -865,27 +865,28 @@
 			box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 		}
 		.teacher-card:hover { border-color: #3b82f6; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5); }
-		.teacher-name { color: #e2e8f0; }
-		.teacher-subject-badge { background-color: rgba(255, 255, 255, 0.12); color: #cbd5e1; }
+		.teacher-name { color: #ffffff; }
+		/* 파스텔 배경은 인라인 스타일로 유지되므로 텍스트만 다크하게 고정 */
+		.teacher-subject-badge { color: #1e293b; }
 
 		/* 교사 시간표 뷰 헤더 */
-		.back-btn-static { background: #1e2a4a; color: #94a3b8; }
-		.back-btn-static:hover { background: #2d3748; color: #e2e8f0; }
-		.teacher-title-static { color: #e2e8f0; }
+		.back-btn-static { background: #1e2a4a; color: #ffffff; }
+		.back-btn-static:hover { background: #2d3748; color: #ffffff; }
+		.teacher-title-static { color: #ffffff; }
 
 		/* 로그인·로딩 화면 */
 		.card { background: #1a1f35; border-color: #2d3748; }
-		.loading-state { color: #94a3b8; }
-		.login-screen h2 { color: #e2e8f0; }
-		.login-screen p { color: #94a3b8; }
+		.loading-state { color: #ffffff; }
+		.login-screen h2 { color: #ffffff; }
+		.login-screen p { color: #ffffff; }
 
 		/* 신청 확인 모달 */
 		.note-modal-card { background: #1a1f35; }
 		.board-style { border-color: #374151; }
 		.note-body { background: #111827; }
-		.note-content { color: #e2e8f0; }
+		.note-content { color: #ffffff; }
 		.note-footer { background: #1a1f35; border-top-color: #2d3748; }
-		.btn-cancel-note { background: #2d3748; color: #94a3b8; }
-		.btn-cancel-note:hover { background: #374151; color: #e2e8f0; }
+		.btn-cancel-note { background: #2d3748; color: #ffffff; }
+		.btn-cancel-note:hover { background: #374151; color: #ffffff; }
 	}
 </style>

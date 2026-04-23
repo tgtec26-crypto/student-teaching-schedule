@@ -96,20 +96,26 @@ button {
 	font-family: inherit;
 }
 
+/* 과목 태그는 항상 파스텔 배경을 사용하므로 테마와 무관하게 어두운 텍스트 유지 */
+.subject,
+.teacher-subject-badge {
+	color: #1e293b;
+}
+
 /* ─── 다크 모드: CSS 변수 오버라이드 ─── */
 @media (prefers-color-scheme: dark) {
 	:root {
 		--header-bg: #0d1128;
 		--accent-green: #7dff80;
 		--card-bg: #1a1f35;
-		--text-main: #e2e8f0;
-		--text-muted: #94a3b8;
+		--text-main: #ffffff;
+		--text-muted: #ffffff;
 		--bg-light: #0f1117;
 		--danger: #f87171;
 	}
 	body {
 		background-color: var(--bg-light);
-		color: #e2e8f0;
+		color: #ffffff;
 	}
 	.card {
 		background: #1a1f35;
