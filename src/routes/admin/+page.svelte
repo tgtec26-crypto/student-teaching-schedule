@@ -882,4 +882,80 @@
 		background-color: #ed8936;
 		transform: translateY(-1px);
 	}
+
+	/* ════════════════════════════════════════
+	   다크 모드
+	════════════════════════════════════════ */
+	@media (prefers-color-scheme: dark) {
+		/* 헤더 */
+		.title-group { color: #e2e8f0; }
+		.admin-header p { color: #94a3b8; }
+
+		/* 섹션 헤더 */
+		.section-header { color: #e2e8f0; border-bottom-color: #2d3748; }
+
+		/* 사용자 추가 섹션 */
+		.add-user-section { background: #1a1f35; border-color: #374151; }
+		.add-user-form label { color: #94a3b8; }
+		textarea {
+			background: #111827;
+			border-color: #374151;
+			color: #e2e8f0;
+		}
+		textarea:focus { border-color: #3b82f6; }
+
+		/* 테이블 */
+		th { background: #1e2a4a; color: #94a3b8; border-bottom-color: #2d3748; }
+		td { border-bottom-color: #2d3748; }
+		tr:hover { background-color: #1e2a4a; }
+		tr.is-admin { background-color: #1a2540; }
+
+		/* 셀 텍스트 */
+		.name { color: #e2e8f0; }
+		.email-cell { color: #94a3b8; }
+		.saving-text { color: #94a3b8; }
+		.not-applicable { color: #4b5563; }
+		.loading { color: #94a3b8; }
+
+		/* select */
+		select {
+			background: #1e2a4a;
+			border-color: #374151;
+			color: #e2e8f0;
+		}
+
+		/* 참관 차단 버튼 */
+		.btn-toggle-block {
+			background: #1e2a4a;
+			border-color: #374151;
+			color: #94a3b8;
+		}
+		.btn-toggle-block:hover { background: #2d3748; }
+		.btn-toggle-block.restricted {
+			background: #2d1515;
+			color: #f87171;
+			border-color: #7f1d1d;
+		}
+		.btn-toggle-block.restricted:hover { background: #3d1a1a; }
+
+		/* 삭제 버튼 */
+		.btn-delete { border-color: #374151; color: #4b5563; }
+		.btn-delete:hover:not(:disabled) {
+			background-color: #2d1515;
+			color: #f87171;
+			border-color: #7f1d1d;
+		}
+
+		/* 메시지 */
+		.message.success { background: #064e3b; color: #6ee7b7; }
+		.message.error { background: #7f1d1d; color: #fca5a5; }
+
+		/* 가이드 섹션 */
+		.guide-section li { color: #94a3b8; }
+		.guide-section li strong { color: #e2e8f0; }
+
+		/* 유지보수 섹션 */
+		.maintenance-section { background-color: #1a1215; border-color: #7f1d1d; }
+		.warning-text { color: #f87171; }
+	}
 </style>

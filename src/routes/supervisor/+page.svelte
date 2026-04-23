@@ -501,4 +501,62 @@
 	@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 	.error-state { text-align: center; padding: 5rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
 	.btn-primary { background: var(--header-bg); color: white; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 800; }
+
+	/* ════════════════════════════════════════
+	   다크 모드
+	════════════════════════════════════════ */
+	@media (prefers-color-scheme: dark) {
+		/* 헤더 타이틀 */
+		.title-group { color: #e2e8f0; }
+
+		/* 교사 카드 (목록 화면) */
+		.teacher-card {
+			background: #1a1f35;
+			border-color: #2d3748;
+		}
+		.teacher-name { color: #e2e8f0; }
+
+		/* 캘린더 컨테이너 */
+		.calendar-view-container { background: #1a1f35; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+
+		/* 캘린더 헤더 */
+		.calendar-header-box { background: #111827; border-bottom-color: #2d3748; }
+		.teacher-title-text,
+		h3 { color: #e2e8f0; }
+
+		/* 헤더 액션 버튼 */
+		.btn-action { background: #1e2a4a; border-color: #374151; color: #e2e8f0; }
+		.btn-action:hover { background: #2d3748; border-color: #4b5563; }
+		.btn-action.on { background: #064e3b; color: #6ee7b7; border-color: #065f46; }
+
+		/* 주차 선택 */
+		.week-selector { background: #111827; border-bottom-color: #2d3748; }
+		.week-nav-btn { background: #1e2a4a; border-color: #374151; color: #e2e8f0; }
+		.week-nav-btn:hover:not(:disabled) { background: #2d3748; }
+		.week-label { color: #e2e8f0; }
+
+		/* 시간표 */
+		.timetable td { background: #1a1f35; border-color: #2d3748; }
+		.timetable tr:hover td { background: #1e2a4a; }
+
+		/* 빈 슬롯 / 신청 불가 */
+		.no-class-text { background-color: #161d30; color: #f87171; }
+		.slot-cell.restricted { background-color: #161d30; }
+
+		/* 슬롯 내 텍스트 */
+		.class-label { color: #e2e8f0; }
+		.lesson-note-preview { color: #94a3b8; background: rgba(0,0,0,0.3); border-color: #374151; }
+
+		/* 차단/허용 버튼 */
+		.btn-toggle-restriction { background: #1e2a4a; border-color: #374151; color: #94a3b8; }
+		.btn-toggle-restriction.is-available { background: #064e3b; border-color: #065f46; color: #6ee7b7; }
+		.btn-toggle-restriction.is-available:hover { background: #065f46; }
+		.btn-toggle-restriction.is-restricted { background: #2d1515; border-color: #7f1d1d; color: #f87171; }
+		.btn-toggle-restriction.is-restricted:hover { background: #3d1a1a; }
+
+		/* 신청자 목록 */
+		.applicant-list { border-top-color: #374151; }
+		.app-item { color: #e2e8f0; }
+		.app-item.DECLINED { color: #4b5563; }
+	}
 </style>

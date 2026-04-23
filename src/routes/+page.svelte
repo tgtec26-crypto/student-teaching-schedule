@@ -812,7 +812,8 @@
 		.v-line { background: #2d3748; }
 
 		/* 주차·날짜 네비 */
-		.nav-unit-box {
+		.nav-unit-box,
+		.nav-unit-box.mini {
 			background: #1a1f35;
 			border-color: #2d3748;
 			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
