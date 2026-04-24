@@ -2,7 +2,7 @@ export const timetableData: any = {
 	'101': {
 		'2026-05-11': {
 			'6': {
-				teacher: 'Serena',
+				teacher: '박혜리',
 				subject: '영어'
 			},
 			'1': {
@@ -232,7 +232,7 @@ export const timetableData: any = {
 				subject: '국어B'
 			},
 			'2': {
-				teacher: 'Serena',
+				teacher: '박혜리',
 				subject: '영어'
 			},
 			'6': {
@@ -398,7 +398,7 @@ export const timetableData: any = {
 				subject: '국어C'
 			},
 			'2': {
-				teacher: 'Serena',
+				teacher: '박혜리',
 				subject: '영어'
 			},
 			'5': {
@@ -448,7 +448,7 @@ export const timetableData: any = {
 		},
 		'2026-05-12': {
 			'3': {
-				teacher: 'Serena',
+				teacher: '박혜리',
 				subject: '영어'
 			},
 			'2': {
@@ -674,7 +674,7 @@ export const timetableData: any = {
 		},
 		'2026-05-15': {
 			'1': {
-				teacher: 'Serena',
+				teacher: '박혜리',
 				subject: '영어'
 			},
 			'3': {
@@ -818,7 +818,7 @@ export const timetableData: any = {
 				subject: '국어B'
 			},
 			'4': {
-				teacher: 'Serena',
+				teacher: '강신완',
 				subject: '영어B'
 			},
 			'5': {
@@ -868,7 +868,7 @@ export const timetableData: any = {
 		},
 		'2026-05-12': {
 			'6': {
-				teacher: 'Serena',
+				teacher: '강신완',
 				subject: '영어B'
 			},
 			'5': {
@@ -1042,7 +1042,7 @@ export const timetableData: any = {
 				subject: '국어A'
 			},
 			'6': {
-				teacher: 'Serena',
+				teacher: '정자연',
 				subject: '영어B'
 			},
 			'2': {
@@ -1152,7 +1152,7 @@ export const timetableData: any = {
 				subject: '국어A'
 			},
 			'7': {
-				teacher: 'Serena',
+				teacher: '정자연',
 				subject: '영어B'
 			},
 			'2': {
@@ -1344,7 +1344,7 @@ export const timetableData: any = {
 		},
 		'2026-05-14': {
 			'7': {
-				teacher: 'Serena',
+				teacher: '이의진',
 				subject: '영어B'
 			},
 			'5': {
@@ -1458,7 +1458,7 @@ export const timetableData: any = {
 		},
 		'2026-05-13': {
 			'5': {
-				teacher: 'Serena',
+				teacher: '이의진',
 				subject: '영어B'
 			},
 			'6': {
@@ -1546,7 +1546,7 @@ export const timetableData: any = {
 				subject: '국어B'
 			},
 			'2': {
-				teacher: 'Serena',
+				teacher: '정자연',
 				subject: '영어A'
 			},
 			'5': {
@@ -1712,7 +1712,7 @@ export const timetableData: any = {
 				subject: '국어A'
 			},
 			'4': {
-				teacher: 'Serena',
+				teacher: '정자연',
 				subject: '영어A'
 			},
 			'3': {
@@ -1826,7 +1826,7 @@ export const timetableData: any = {
 				subject: '국어A'
 			},
 			'3': {
-				teacher: 'Serena',
+				teacher: '정자연',
 				subject: '영어A'
 			},
 			'5': {
@@ -2048,7 +2048,7 @@ export const timetableData: any = {
 				subject: '국어B'
 			},
 			'4': {
-				teacher: 'Serena',
+				teacher: '정자연',
 				subject: '영어A'
 			},
 			'1': {
@@ -2162,7 +2162,7 @@ export const timetableData: any = {
 				subject: '국어A'
 			},
 			'1': {
-				teacher: 'Serena',
+				teacher: '정자연',
 				subject: '영어A'
 			},
 			'2': {
@@ -2246,7 +2246,7 @@ export const timetableData: any = {
 				subject: '국어B'
 			},
 			'5': {
-				teacher: 'Serena',
+				teacher: '정자연',
 				subject: '영어A'
 			},
 			'6': {

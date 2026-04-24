@@ -17,7 +17,6 @@ export const teacherMetadata: Record<string, { name: string; subject: string }> 
 	'izoayuri@snu-g.ms.kr': { name: '노유리', subject: '도덕' },
 	'jan422@snu-g.ms.kr': { name: '정안나', subject: '국어' },
 	'euijin_lee@snu-g.ms.kr': { name: '이의진', subject: '영어' },
-	'sdipietro@snu-g.ms.kr': { name: 'Serena', subject: '영어' },
 	'jjy2025@snu-g.ms.kr': { name: '정자연', subject: '영어' },
 	'joo0306@snu-g.ms.kr': { name: '주예진', subject: '지구' },
 	'joo701@snu-g.ms.kr': { name: '주지원', subject: '체육' },
