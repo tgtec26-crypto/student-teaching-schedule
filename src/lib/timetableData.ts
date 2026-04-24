@@ -1042,7 +1042,7 @@ export const timetableData: any = {
 				subject: '국어A'
 			},
 			'6': {
-				teacher: '이의진',
+				teacher: 'Serena',
 				subject: '영어B'
 			},
 			'2': {
@@ -1152,7 +1152,7 @@ export const timetableData: any = {
 				subject: '국어A'
 			},
 			'7': {
-				teacher: '이의진',
+				teacher: 'Serena',
 				subject: '영어B'
 			},
 			'2': {
@@ -1572,7 +1572,7 @@ export const timetableData: any = {
 				subject: '국어A'
 			},
 			'3': {
-				teacher: '정자연',
+				teacher: '이의진',
 				subject: '영어B'
 			},
 			'7': {
@@ -1712,7 +1712,7 @@ export const timetableData: any = {
 				subject: '국어A'
 			},
 			'4': {
-				teacher: '이의진',
+				teacher: 'Serena',
 				subject: '영어A'
 			},
 			'3': {
@@ -1768,7 +1768,7 @@ export const timetableData: any = {
 				subject: '국어B'
 			},
 			'4': {
-				teacher: '정자연',
+				teacher: '이의진',
 				subject: '영어B'
 			},
 			'6': {
@@ -1826,7 +1826,7 @@ export const timetableData: any = {
 				subject: '국어A'
 			},
 			'3': {
-				teacher: '이의진',
+				teacher: 'Serena',
 				subject: '영어A'
 			},
 			'5': {
@@ -1878,7 +1878,7 @@ export const timetableData: any = {
 		},
 		'2026-05-13': {
 			'6': {
-				teacher: '정자연',
+				teacher: '이의진',
 				subject: '영어B'
 			},
 			'3': {
@@ -1962,7 +1962,7 @@ export const timetableData: any = {
 	'304': {
 		'2026-05-11': {
 			'3': {
-				teacher: '정자연',
+				teacher: '이의진',
 				subject: '영어B'
 			},
 			'6': {
@@ -2048,7 +2048,7 @@ export const timetableData: any = {
 				subject: '국어B'
 			},
 			'4': {
-				teacher: '이의진',
+				teacher: 'Serena',
 				subject: '영어A'
 			},
 			'1': {
@@ -2132,7 +2132,7 @@ export const timetableData: any = {
 				subject: '국어B'
 			},
 			'5': {
-				teacher: '정자연',
+				teacher: '이의진',
 				subject: '영어B'
 			},
 			'7': {
@@ -2246,7 +2246,7 @@ export const timetableData: any = {
 				subject: '국어B'
 			},
 			'5': {
-				teacher: '이의진',
+				teacher: 'Serena',
 				subject: '영어A'
 			},
 			'6': {
@@ -2272,7 +2272,7 @@ export const timetableData: any = {
 				subject: '국어A'
 			},
 			'1': {
-				teacher: '정자연',
+				teacher: '이의진',
 				subject: '영어B'
 			},
 			'2': {
