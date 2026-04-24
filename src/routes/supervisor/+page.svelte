@@ -28,6 +28,7 @@
 	import { teacherMetadata } from '$lib/teacherData';
 	import { getSupervisedStudents } from '$lib/supervisionMapping';
 	import { supervisorResetSignal } from '$lib/supervisorNav';
+	import { swipe } from '$lib/swipe';
 
 	// 메시지 입력 모달 상태
 	let showDefaultNoteModal = $state(false);
@@ -422,7 +423,7 @@
 						<button class="week-nav-btn" disabled={currentWeekIndex === 5} onclick={() => currentWeekIndex++}><ChevronRight size={20} /></button>
 					</div>
 
-					<div class="timetable-wrapper">
+					<div class="timetable-wrapper" use:swipe={{ onLeft: () => { if (currentWeekIndex < 5) currentWeekIndex++; }, onRight: () => { if (currentWeekIndex > 0) currentWeekIndex--; } }}>
 						<table class="timetable weekly">
 							<thead>
 								<tr>

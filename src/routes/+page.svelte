@@ -19,6 +19,7 @@
 	import { studentData } from '$lib/studentData';
 	import { teacherMetadata } from '$lib/teacherData';
 	import { teacherWebhooks } from '$lib/teacherWebhooks';
+	import { swipe } from '$lib/swipe';
 	import { goto } from '$app/navigation';
 	import {
 		collection,
@@ -393,7 +394,7 @@
 									<h3 class="teacher-title-static">{selectedTeacher} 선생님</h3>
 								</div>
 							</div>
-							<div class="timetable-wrapper">
+							<div class="timetable-wrapper" use:swipe={{ onLeft: nextWeek, onRight: prevWeek }}>
 								<table class="timetable weekly">
 									<thead><tr><th class="corner-tl sticky-col">교시</th>{#each weekDates as d, i}<th class={i === 4 ? 'corner-tr' : ''}>{weekDays[i]} ({d.split('-').slice(1).join('/')})</th>{/each}</tr></thead>
 									<tbody>
@@ -472,7 +473,7 @@
 							</table>
 						</div>
 					{:else if viewMode === 'my'}
-						<div class="timetable-wrapper">
+						<div class="timetable-wrapper" use:swipe={{ onLeft: nextWeek, onRight: prevWeek }}>
 							<table class="timetable weekly">
 								<thead><tr><th class="corner-tl sticky-col">교시</th>{#each weekDates as d, i}<th class={i === 4 ? 'corner-tr' : ''}>{weekDays[i]} ({d.split('-').slice(1).join('/')})</th>{/each}</tr></thead>
 								<tbody>
