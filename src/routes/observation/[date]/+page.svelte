@@ -4,7 +4,7 @@
 	import { teacherWebhooks } from '$lib/teacherWebhooks';
 	import { page } from '$app/state';
 	import { user, db, isStudent, isAdmin } from '$lib/firebase';
-	import { timetableData } from '$lib/timetableData';
+	import { timetableData, getSlot } from '$lib/timetableData';
 	import {
 		collection,
 		query,
@@ -391,8 +391,7 @@
 	}
 
 	function getRepeatingSlot(classId: string, targetDate: string, period: string) {
-		const day = new Date(targetDate).getDay();
-		return timetableData[classId]?.[`2026-05-${10 + day}`]?.[period];
+		return getSlot(classId, targetDate, period);
 	}
 </script>
 

@@ -15,7 +15,7 @@
 		ChevronRight,
 		LogOut
 	} from 'lucide-svelte';
-	import { timetableData } from '$lib/timetableData';
+	import { timetableData, getSlot } from '$lib/timetableData';
 	import { studentData } from '$lib/studentData';
 	import { teacherMetadata } from '$lib/teacherData';
 	import { teacherWebhooks } from '$lib/teacherWebhooks';
@@ -316,8 +316,7 @@
 	}
 
 	function getRepeatingSlot(classId: string, dStr: string, period: string) {
-		const day = new Date(dStr).getDay();
-		return timetableData[classId]?.[`2026-05-${10 + day}`]?.[period];
+		return getSlot(classId, dStr, period);
 	}
 
 	function is7thPeriodRestricted(targetDate: string, period: string) {

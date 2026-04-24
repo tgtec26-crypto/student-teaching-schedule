@@ -2380,3 +2380,58 @@ export const timetableData: any = {
 		}
 	}
 };
+
+// OVERRIDE_BLOCK_V1
+// 정자연 ↔ 이의진 수업 교환 (5/11 주, 5/18 주에만 적용). 다른 주는 원본 시간표 유지.
+export const scheduleOverrides: Record<
+	string,
+	Record<string, Record<string, { teacher: string; subject: string }>>
+> = {
+	'203': {
+		'2026-05-13': { '6': { teacher: '이의진', subject: '영어B' } },
+		'2026-05-20': { '6': { teacher: '이의진', subject: '영어B' } }
+	},
+	'204': {
+		'2026-05-12': { '7': { teacher: '이의진', subject: '영어B' } },
+		'2026-05-19': { '7': { teacher: '이의진', subject: '영어B' } }
+	},
+	'301': {
+		'2026-05-12': { '3': { teacher: '정자연', subject: '영어A' } },
+		'2026-05-19': { '3': { teacher: '정자연', subject: '영어A' } }
+	},
+	'302': {
+		'2026-05-12': { '4': { teacher: '이의진', subject: '영어B' } },
+		'2026-05-14': { '4': { teacher: '정자연', subject: '영어A' } },
+		'2026-05-19': { '4': { teacher: '이의진', subject: '영어B' } },
+		'2026-05-21': { '4': { teacher: '정자연', subject: '영어A' } }
+	},
+	'303': {
+		'2026-05-11': { '3': { teacher: '이의진', subject: '영어B' } },
+		'2026-05-13': { '6': { teacher: '정자연', subject: '영어A' } },
+		'2026-05-18': { '3': { teacher: '이의진', subject: '영어B' } },
+		'2026-05-20': { '6': { teacher: '정자연', subject: '영어A' } }
+	},
+	'304': {
+		'2026-05-11': { '3': { teacher: '정자연', subject: '영어A' } },
+		'2026-05-14': { '4': { teacher: '이의진', subject: '영어B' } },
+		'2026-05-18': { '3': { teacher: '정자연', subject: '영어A' } },
+		'2026-05-21': { '4': { teacher: '이의진', subject: '영어B' } }
+	},
+	'305': {
+		'2026-05-12': { '5': { teacher: '정자연', subject: '영어A' } },
+		'2026-05-19': { '5': { teacher: '정자연', subject: '영어A' } }
+	},
+	'306': {
+		'2026-05-11': { '5': { teacher: '이의진', subject: '영어B' } },
+		'2026-05-12': { '1': { teacher: '정자연', subject: '영어A' } },
+		'2026-05-18': { '5': { teacher: '이의진', subject: '영어B' } },
+		'2026-05-19': { '1': { teacher: '정자연', subject: '영어A' } }
+	}
+};
+
+export function getSlot(classId: string, dateStr: string, period: string) {
+	const override = scheduleOverrides[classId]?.[dateStr]?.[period];
+	if (override) return override;
+	const day = new Date(dateStr).getDay();
+	return timetableData[classId]?.[`2026-05-${10 + day}`]?.[period];
+}
