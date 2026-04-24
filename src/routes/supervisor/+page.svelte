@@ -25,6 +25,7 @@
 	} from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { teacherWebhooks } from '$lib/teacherWebhooks';
+	import { autoApproveExpiredApplications } from '$lib/autoApproveExpired';
 	import { teacherMetadata } from '$lib/teacherData';
 	import { getSupervisedStudents } from '$lib/supervisionMapping';
 	import { supervisorResetSignal } from '$lib/supervisorNav';
@@ -167,6 +168,7 @@
 		return onSnapshot(qApps, (snapshot) => {
 			allApplications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 			loading = false;
+			autoApproveExpiredApplications(allApplications);
 		});
 	});
 

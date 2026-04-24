@@ -19,6 +19,7 @@
 	import { studentData } from '$lib/studentData';
 	import { teacherMetadata } from '$lib/teacherData';
 	import { teacherWebhooks } from '$lib/teacherWebhooks';
+	import { autoApproveExpiredApplications } from '$lib/autoApproveExpired';
 	import { swipe } from '$lib/swipe';
 	import { goto } from '$app/navigation';
 	import {
@@ -119,7 +120,11 @@
 	$effect(() => {
 		if (checking || !$user) return;
 		const qApps = query(collection(db, 'observation_applications'), where('date', '>=', allWeekDates[0]), where('date', '<=', allWeekDates[19]));
-		const unsubApps = onSnapshot(qApps, (snap) => { applications = snap.docs.map(d => ({id: d.id, ...d.data()})); loading = false; });
+		const unsubApps = onSnapshot(qApps, (snap) => {
+			applications = snap.docs.map(d => ({id: d.id, ...d.data()}));
+			loading = false;
+			autoApproveExpiredApplications(applications);
+		});
 		const unsubRest = onSnapshot(collection(db, 'restricted_lessons'), (snap) => { restrictions = snap.docs.map(d => d.id); });
 		const unsubGlobal = onSnapshot(collection(db, 'teacher_restrictions'), (snap) => { teacherRestrictions = snap.docs.map(d => d.id); });
 		return () => { unsubApps(); unsubRest(); unsubGlobal(); };
