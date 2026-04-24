@@ -5,6 +5,10 @@ import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
+	// git worktree에서 실행 시 상위 저장소 node_modules 접근 허용
+	server: {
+		fs: { allow: ['..', '../..', '../../..'] }
+	},
 	test: {
 		expect: { requireAssertions: true },
 		projects: [
