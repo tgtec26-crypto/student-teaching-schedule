@@ -90,6 +90,7 @@
 	];
 
 	const restrictedDates = ['2026-05-04', '2026-05-05', '2026-05-22', '2026-05-25', '2026-05-29'];
+	const forcedApprovalDates = ['2026-05-06', '2026-05-07', '2026-05-08'];
 
 	function getWeekLabel(index: number) {
 		if (index === 0) return '-2주차 (테스트)';
@@ -266,6 +267,10 @@
 	}
 
 	async function toggleRestriction(date: string, period: string, classId: string) {
+		if (forcedApprovalDates.includes(date)) {
+			alert('5월 6, 7, 8일은 강제 자동 승인 기간이라 참관 거부로 변경할 수 없습니다.');
+			return;
+		}
 		const teacherKey = selectedTeacher.trim();
 		const resId = `${teacherKey}_${date}_${period}_${classId}`;
 		if (restrictions.includes(resId)) await deleteDoc(doc(db, 'restricted_lessons', resId));
@@ -444,6 +449,7 @@
 												{#if !isDisabledDate && slot}
 													{@const resId = `${selectedTeacher}_${d}_${period}_${slot.classId}`}
 													{@const isBlocked = restrictions.includes(resId)}
+													{@const isForcedApproval = forcedApprovalDates.includes(d)}
 													{@const hasNote = lessonNotes[resId]}
 													<div class="slot-content card {isBlocked ? 'manually-restricted' : ''}"
 														style="background-color: {isBlocked ? '#fff5f5' : getSubjectColor(slot.subject) + '66'}; border: 1.5px solid {isBlocked ? '#fecaca' : getSubjectColor(slot.subject)};"
@@ -463,8 +469,8 @@
 																{/if}
 															</span>
 															<span class="class-label">{slot.classId.substring(0, 1)}-{parseInt(slot.classId.substring(2))}</span>
-															<button class="btn-toggle-restriction {isBlocked ? 'is-restricted' : 'is-available'}" onclick={() => toggleRestriction(d, period, slot.classId)}>
-																{isBlocked ? '불가' : '가능'}
+															<button class="btn-toggle-restriction {isForcedApproval ? 'is-forced' : isBlocked ? 'is-restricted' : 'is-available'}" onclick={() => toggleRestriction(d, period, slot.classId)} disabled={isForcedApproval} title={isForcedApproval ? '5월 6, 7, 8일은 강제 자동 승인 기간입니다.' : ''}>
+																{isForcedApproval ? '필수' : isBlocked ? '불가' : '가능'}
 															</button>
 														</div>
 														{#if hasNote}
@@ -597,6 +603,8 @@
 	.btn-toggle-restriction.is-available:hover { background-color: #dcfce7; }
 	.btn-toggle-restriction.is-restricted { background-color: #fff5f5; border-color: #fecaca; color: #ff7b89; }
 	.btn-toggle-restriction.is-restricted:hover { background-color: #fee2e2; }
+	.btn-toggle-restriction.is-forced { background-color: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; cursor: not-allowed; opacity: 0.95; }
+	.btn-toggle-restriction.is-forced:hover { background-color: #eff6ff; }
 	.applicant-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.2rem 0.4rem; margin-top: 0.5rem; border-top: 1px dashed #cbd5e1; padding-top: 0.5rem; }
 	.app-item { font-size: 0.85rem; font-weight: 600; color: #000; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 0.2rem; text-align: center; line-height: 1.1; }
 	.app-item.DECLINED { opacity: 0.4; text-decoration: line-through; }
@@ -774,6 +782,8 @@
 		.btn-toggle-restriction.is-available:hover { background: #065f46; }
 		.btn-toggle-restriction.is-restricted { background: #2d1515; border-color: #7f1d1d; color: #f87171; }
 		.btn-toggle-restriction.is-restricted:hover { background: #3d1a1a; }
+		.btn-toggle-restriction.is-forced { background: #1e293b; border-color: #1d4ed8; color: #93c5fd; }
+		.btn-toggle-restriction.is-forced:hover { background: #1e293b; }
 
 		/* 신청자 목록 */
 		.applicant-list { border-top-color: #374151; }
