@@ -132,7 +132,7 @@
 
 	// 3. Teacher Mapping
 	const subjectOrder = ['국어', '한문', '수학', '도덕', '사회', '역사', '물리', '화학', '생명', '지구', '과학', '영어', '기가', '기술', '가정', '체육', '음악', '미술', '진로', '정보', '스포츠', '주제', '동아리'];
-	const subjectColors: Record<string, string> = { 국어: '#fecaca', 한문: '#fecaca', 수학: '#bbf7d0', 도덕: '#e9d5ff', 사회: '#e9d5ff', 역사: '#e9d5ff', 과학: '#fef08a', 물리: '#fef08a', 화학: '#fef08a', 생명: '#fef08a', 지구: '#fef08a', 영어: '#bfdbfe', 기가: '#e2e8f0', 기술: '#e2e8f0', 가정: '#e2e8f0', 체육: '#fed7aa', 음악: '#bae6fd', 미술: '#fbcfe8', 진로: '#f3e8ff', 정보: '#a7f3d0', 스포츠: '#cffafe' };
+	const subjectColors: Record<string, string> = { 국어: '#fecaca', 한문: '#fecaca', 수학: '#bbf7d0', 도덕: '#e9d5ff', 사회: '#e9d5ff', 역사: '#e9d5ff', 과학: '#fef08a', 물리: '#fef08a', 화학: '#fef08a', 생명: '#fef08a', 지구: '#fef08a', 영어: '#bfdbfe', 기가: '#e2e8f0', 기술: '#e2e8f0', 가정: '#e2e8f0', 체육: '#fed7aa', 음악: '#deb887', 미술: '#fbcfe8', 진로: '#f3e8ff', 정보: '#a7f3d0', 스포츠: '#cffafe' };
 	
 	function getSubjectColor(s: string) { if (!s) return '#f3f4f6'; return subjectColors[s.substring(0, 2)] || '#f3f4f6'; }
 

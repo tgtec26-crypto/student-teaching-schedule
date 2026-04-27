@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { user, login, logout, isAdmin, isSupervisor } from '$lib/firebase';
 	import { supervisorResetSignal } from '$lib/supervisorNav';
-	import { LogIn, LogOut, User as UserIcon, ArrowLeft, ShieldCheck, UserCheck, Bell, HelpCircle } from 'lucide-svelte';
+	import { LogIn, LogOut, User as UserIcon, ArrowLeft, ShieldCheck, UserCheck, Bell, HelpCircle, Replace } from 'lucide-svelte';
 
 	// /supervisor에 이미 있는 상태에서 '지도교사' 버튼을 누르면 목록 뷰로 복귀
 	function handleSupervisorClick() {
@@ -42,6 +42,9 @@
 						<UserCheck size={14} /> 지도교사
 					</a>
 				{/if}
+				<a href="/schedule-changes" class="top-btn changes">
+					<Replace size={14} /> 시간표 변동
+				</a>
 			{/if}
 		</div>
 
@@ -147,6 +150,7 @@
 
 	.top-btn.admin { border-color: #94a3b8; }
 	.top-btn.supervisor { border-color: #f59e0b; color: #fbbf24; }
+	.top-btn.changes { border-color: #38bdf8; color: #7dd3fc; }
 
 	.header-content-main {
 		display: flex;
@@ -328,6 +332,7 @@
 		.user-info { background: rgba(255, 255, 255, 0.08); }
 		.top-btn { border-color: rgba(255, 255, 255, 0.22); }
 		.top-btn.supervisor { color: #fbbf24; border-color: #fbbf24; }
+		.top-btn.changes { color: #7dd3fc; border-color: #7dd3fc; }
 	}
 
 	/* ─── ≤600px: 소형 모바일 세로 모드 추가 압축 ─── */

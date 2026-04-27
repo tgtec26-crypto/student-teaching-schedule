@@ -2383,6 +2383,8 @@ export const timetableData: any = {
 
 // OVERRIDE_BLOCK_V1
 // 정자연 ↔ 이의진 수업 교환 (5/11 주, 5/18 주에만 적용). 다른 주는 원본 시간표 유지.
+// 2-4 금요일 2교시 음악: 이윤경 → 전태상 (참관 기간 모든 금요일).
+// 5/28(목) 추가 변동: 2-1 3교시 정안나 → 전태상, 2-6 4교시 정예지 → 전태상, 2-2 6교시 정재선 → 전태상.
 export const scheduleOverrides: Record<
 	string,
 	Record<string, Record<string, { teacher: string; subject: string }>>
@@ -2391,9 +2393,22 @@ export const scheduleOverrides: Record<
 		'2026-05-13': { '6': { teacher: '이의진', subject: '영어B' } },
 		'2026-05-20': { '6': { teacher: '이의진', subject: '영어B' } }
 	},
+	'201': {
+		'2026-05-28': { '3': { teacher: '전태상', subject: '음악B' } }
+	},
+	'202': {
+		'2026-05-28': { '6': { teacher: '전태상', subject: '음악B' } }
+	},
 	'204': {
 		'2026-05-12': { '7': { teacher: '이의진', subject: '영어B' } },
-		'2026-05-19': { '7': { teacher: '이의진', subject: '영어B' } }
+		'2026-05-19': { '7': { teacher: '이의진', subject: '영어B' } },
+		'2026-05-08': { '2': { teacher: '전태상', subject: '음악B' } },
+		'2026-05-15': { '2': { teacher: '전태상', subject: '음악B' } },
+		'2026-05-22': { '2': { teacher: '전태상', subject: '음악B' } },
+		'2026-05-29': { '2': { teacher: '전태상', subject: '음악B' } }
+	},
+	'206': {
+		'2026-05-28': { '4': { teacher: '전태상', subject: '음악B' } }
 	},
 	'301': {
 		'2026-05-12': { '3': { teacher: '정자연', subject: '영어A' } },
