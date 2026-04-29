@@ -11,7 +11,7 @@
 		deleteDoc,
 		getDoc
 	} from 'firebase/firestore';
-	import { timetableData } from '$lib/timetableData';
+	import { timetableData, scheduleOverrides } from '$lib/timetableData';
 	import {
 		Users,
 		Calendar,
@@ -374,7 +374,8 @@
 		const day = new Date(targetDate).getDay();
 		const refDate = `2026-05-${10 + day}`;
 		for (const [classId, dates] of Object.entries(timetableData)) {
-			const slot = (dates as any)[refDate]?.[period];
+			const override = scheduleOverrides[classId]?.[targetDate]?.[period];
+			const slot = override ?? (dates as any)[refDate]?.[period];
 			if (slot && slot.teacher === teacher) return { classId, ...slot };
 		}
 		return null;
