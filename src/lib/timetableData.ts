@@ -2389,6 +2389,10 @@ export const timetableData: any = {
 //   5/7(목) 1-4반: 1교시(강율이→이윤경) ↔ 5교시(이윤경→강율이) 교시 교환.
 //   1-2반 6교시: 5/7(목)→5/4(월) 이윤경 이동, 5/4(월)→5/7(목) 강율이 이동 (요일 교환).
 // 황경진 ↔ 주예진 교환: 5/6(수) 3-2반 1교시(황경진 사회) ↔ 6교시(주예진 지구) 교시 교환.
+// 최인영 ↔ 주예진 교환 (3-1): 5/4(월) 4교시(최인영 국어B) ↔ 5/6(수) 3교시(주예진 지구).
+// 강율이 ↔ 김보미 교환 (1-3): 5/11(월) 3교시(강율이 기가) ↔ 5/12(화) 6교시(김보미 한문).
+// 송윤호 ↔ 이의진 교환 (3-1): 5/26(화) 3교시(이의진 영어B) ↔ 5/28(목) 3교시(송윤호 수학B).
+// 김유진 → 5/28(목) 3-2반 2교시 (송윤호 수학B → 김유진 국어A). 6/1 송윤호 수업은 실습 기간 외라 미반영.
 export const scheduleOverrides: Record<
 	string,
 	Record<string, Record<string, { teacher: string; subject: string }>>
@@ -2402,6 +2406,10 @@ export const scheduleOverrides: Record<
 			'1': { teacher: '이윤경', subject: '음악' },
 			'5': { teacher: '강율이', subject: '기가' }
 		}
+	},
+	'103': {
+		'2026-05-11': { '3': { teacher: '김보미', subject: '한문' } },
+		'2026-05-12': { '6': { teacher: '강율이', subject: '기가' } }
 	},
 	'203': {
 		'2026-05-13': { '6': { teacher: '이의진', subject: '영어B' } },
@@ -2425,8 +2433,12 @@ export const scheduleOverrides: Record<
 		'2026-05-28': { '4': { teacher: '전태상', subject: '음악B' } }
 	},
 	'301': {
+		'2026-05-04': { '4': { teacher: '주예진', subject: '지구' } },
+		'2026-05-06': { '3': { teacher: '최인영', subject: '국어B' } },
 		'2026-05-12': { '3': { teacher: '정자연', subject: '영어A' } },
-		'2026-05-19': { '3': { teacher: '정자연', subject: '영어A' } }
+		'2026-05-19': { '3': { teacher: '정자연', subject: '영어A' } },
+		'2026-05-26': { '3': { teacher: '송윤호', subject: '수학B' } },
+		'2026-05-28': { '3': { teacher: '이의진', subject: '영어B' } }
 	},
 	'302': {
 		'2026-05-06': {
@@ -2436,7 +2448,8 @@ export const scheduleOverrides: Record<
 		'2026-05-12': { '4': { teacher: '이의진', subject: '영어B' } },
 		'2026-05-14': { '4': { teacher: '정자연', subject: '영어A' } },
 		'2026-05-19': { '4': { teacher: '이의진', subject: '영어B' } },
-		'2026-05-21': { '4': { teacher: '정자연', subject: '영어A' } }
+		'2026-05-21': { '4': { teacher: '정자연', subject: '영어A' } },
+		'2026-05-28': { '2': { teacher: '김유진', subject: '국어A' } }
 	},
 	'303': {
 		'2026-05-11': { '3': { teacher: '이의진', subject: '영어B' } },
