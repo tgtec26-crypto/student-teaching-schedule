@@ -11,7 +11,7 @@
 		where,
 		onSnapshot,
 		getDoc,
-		addDoc,
+		setDoc,
 		deleteDoc,
 		doc,
 		Timestamp
@@ -237,10 +237,22 @@
 			status = 'APPROVED';
 		}
 
-		await addDoc(collection(db, 'observation_applications'), { 
+		// 결정적 ID로 동일 (실습생, 수업) 중복 doc 생성 방지
+		const appId = `${applicantEmail}_${targetDate}_${period}_${classId}`;
+		const appRef = doc(db, 'observation_applications', appId);
+
+		// 다른 탭/기기에서 이미 신청한 경우(특히 이미 승인된 경우) 덮어쓰지 않음
+		const existingSnap = await getDoc(appRef);
+		if (existingSnap.exists()) {
+			showNoteModal = false;
+			pendingAppData = null;
+			return;
+		}
+
+		await setDoc(appRef, {
 			date: targetDate, classId, period, subject, teacher, teacherEmail,
-			applicantEmail, applicantName, applicantSubject, 
-			status: status, timestamp: Timestamp.now() 
+			applicantEmail, applicantName, applicantSubject,
+			status: status, timestamp: Timestamp.now()
 		});
 
 		const url = teacherWebhooks[teacher];
