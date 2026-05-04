@@ -2388,6 +2388,7 @@ export const timetableData: any = {
 // 이윤경 ↔ 강율이 교환 (1학년):
 //   5/7(목) 1-4반: 1교시(강율이→이윤경) ↔ 5교시(이윤경→강율이) 교시 교환.
 //   1-2반 6교시: 5/7(목)→5/4(월) 이윤경 이동, 5/4(월)→5/7(목) 강율이 이동 (요일 교환).
+// 황경진 ↔ 주예진 교환: 5/6(수) 3-2반 1교시(황경진 사회) ↔ 6교시(주예진 지구) 교시 교환.
 export const scheduleOverrides: Record<
 	string,
 	Record<string, Record<string, { teacher: string; subject: string }>>
@@ -2428,6 +2429,10 @@ export const scheduleOverrides: Record<
 		'2026-05-19': { '3': { teacher: '정자연', subject: '영어A' } }
 	},
 	'302': {
+		'2026-05-06': {
+			'1': { teacher: '주예진', subject: '지구' },
+			'6': { teacher: '황경진', subject: '사회' }
+		},
 		'2026-05-12': { '4': { teacher: '이의진', subject: '영어B' } },
 		'2026-05-14': { '4': { teacher: '정자연', subject: '영어A' } },
 		'2026-05-19': { '4': { teacher: '이의진', subject: '영어B' } },
