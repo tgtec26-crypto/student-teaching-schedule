@@ -69,12 +69,17 @@
 
 	// ---------- 집계 (모두 derived) ----------
 
-	// 교사별 신청 수
+	// 교사별 신청 수 (수업 과목도 함께 집계)
 	const teacherCounts = $derived.by(() => {
-		const m = new Map<string, number>();
-		for (const a of apps) m.set(a.teacher, (m.get(a.teacher) ?? 0) + 1);
+		const m = new Map<string, { count: number; subject: string }>();
+		for (const a of apps) {
+			const cur = m.get(a.teacher) ?? { count: 0, subject: a.subject ?? '' };
+			cur.count += 1;
+			if (!cur.subject && a.subject) cur.subject = a.subject;
+			m.set(a.teacher, cur);
+		}
 		return [...m.entries()]
-			.map(([name, count]) => ({ name, count }))
+			.map(([name, v]) => ({ name, count: v.count, subject: v.subject }))
 			.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ko'));
 	});
 
@@ -126,6 +131,18 @@
 		return max || 1;
 	});
 
+	// 과목 lookup 테이블 (매트릭스 행/열 헤더에서 빠르게 조회)
+	const teacherSubjectMap = $derived.by(() => {
+		const m = new Map<string, string>();
+		for (const t of teacherCounts) m.set(t.name, t.subject);
+		return m;
+	});
+	const studentSubjectMap = $derived.by(() => {
+		const m = new Map<string, string>();
+		for (const s of studentCounts) m.set(s.name, s.subject);
+		return m;
+	});
+
 	// ---------- 요약 ----------
 	const summary = $derived({
 		total: apps.length,
@@ -151,6 +168,30 @@
 		selectedTeacher = null;
 		selectedStudent = null;
 		detailItems = [];
+	}
+
+	// ---------- 행 헤더(교사 이름) 클릭 → 그 교사에게 신청한 실습생 분포 막대 그래프 ----------
+	let selectedRowTeacher = $state<string | null>(null);
+	let teacherDistribution = $state<Array<{ name: string; subject: string; count: number }>>([]);
+
+	function openTeacherDistribution(teacher: string) {
+		selectedRowTeacher = teacher;
+		const m = new Map<string, { count: number; subject: string }>();
+		for (const a of apps) {
+			if (a.teacher !== teacher) continue;
+			const cur = m.get(a.applicantName) ?? { count: 0, subject: a.applicantSubject ?? '' };
+			cur.count += 1;
+			if (!cur.subject && a.applicantSubject) cur.subject = a.applicantSubject;
+			m.set(a.applicantName, cur);
+		}
+		teacherDistribution = [...m.entries()]
+			.map(([name, v]) => ({ name, count: v.count, subject: v.subject }))
+			.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ko'));
+	}
+
+	function closeTeacherDistribution() {
+		selectedRowTeacher = null;
+		teacherDistribution = [];
 	}
 
 	// 히트맵 셀 색상 (count → HSL alpha)
@@ -291,7 +332,7 @@
 			<section class="matrix-section card">
 				<div class="section-header">
 					<Grid3x3 size={20} />
-					<h3>교사 × 실습생 매트릭스 (셀 클릭 → 상세)</h3>
+					<h3>교사 × 실습생 매트릭스 (교사명 / 셀 클릭 → 상세)</h3>
 				</div>
 				<div class="matrix-scroll">
 					<table class="matrix-table">
@@ -299,15 +340,39 @@
 							<tr>
 								<th class="corner">교사 \ 실습생</th>
 								{#each matrix.students as st}
-									<th class="col-header" title={st}>{st}</th>
+									{@const stSubj = studentSubjectMap.get(st) ?? ''}
+									<th class="col-header" title={stSubj ? `${stSubj} · ${st}` : st}>
+										{#if stSubj}
+											<span class="col-subject">{stSubj}</span>
+										{/if}
+										<span class="col-name">{st}</span>
+									</th>
 								{/each}
 								<th class="row-total-header">합계</th>
 							</tr>
 						</thead>
 						<tbody>
 							{#each matrix.rows as r (r.teacher)}
+								{@const tSubj = teacherSubjectMap.get(r.teacher) ?? ''}
 								<tr>
-									<th class="row-header">{r.teacher}</th>
+									<th
+										class="row-header clickable"
+										onclick={() => openTeacherDistribution(r.teacher)}
+										onkeydown={(e) => {
+											if (e.key === 'Enter' || e.key === ' ') {
+												e.preventDefault();
+												openTeacherDistribution(r.teacher);
+											}
+										}}
+										role="button"
+										tabindex="0"
+										title="{r.teacher} 선생님께 신청한 실습생 분포 보기"
+									>
+										{#if tSubj}
+											<span class="row-subject">{tSubj}</span>
+										{/if}
+										<span class="row-name">{r.teacher}</span>
+									</th>
 									{#each matrix.students as st}
 										{@const v = r.cells.get(st) ?? 0}
 										<td
@@ -345,6 +410,55 @@
 		{/if}
 	{/if}
 </div>
+
+<!-- 교사 분포 모달: 교사명 클릭 시 그 교사에게 신청한 실습생 분포 막대 -->
+{#if selectedRowTeacher}
+	<div
+		class="modal-overlay"
+		onclick={closeTeacherDistribution}
+		onkeydown={(e) => e.key === 'Escape' && closeTeacherDistribution()}
+		role="presentation"
+	>
+		<div
+			class="modal-content"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
+			role="dialog"
+			tabindex="-1"
+		>
+			<div class="modal-header">
+				<h3>
+					<span class="modal-pair">{selectedRowTeacher} 선생님 신청 실습생</span>
+					<span class="modal-count">{teacherDistribution.length}명</span>
+				</h3>
+				<button class="btn-close" onclick={closeTeacherDistribution} aria-label="닫기">
+					<X size={20} />
+				</button>
+			</div>
+			<div class="modal-body distribution-body">
+				{#if teacherDistribution.length === 0}
+					<div class="empty-distribution">신청 내역이 없습니다.</div>
+				{:else}
+					{@const max = Math.max(...teacherDistribution.map((s) => s.count))}
+					<div class="bar-list distribution-bars">
+						{#each teacherDistribution as s (s.name)}
+							<div class="bar-row">
+								<div class="bar-label">
+									{s.name}
+									{#if s.subject}<span class="subject-tag">{s.subject}</span>{/if}
+								</div>
+								<div class="bar-track">
+									<div class="bar-fill student" style="width: {(s.count / max) * 100}%"></div>
+								</div>
+								<div class="bar-count">{s.count}</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		</div>
+	</div>
+{/if}
 
 <!-- 상세 모달 (.container 외부에 배치하여 부모 stacking context의 영향을 받지 않음) -->
 {#if selectedTeacher && selectedStudent}
@@ -649,13 +763,51 @@
 	.matrix-table thead .corner {
 		border-top-left-radius: 8px; /* 헤더 셀 위쪽 코너 라운드 */
 		text-align: left;
-		min-width: 110px;
+		min-width: 140px;
 	}
 	.matrix-table thead .col-header {
 		writing-mode: horizontal-tb;
 		max-width: 80px;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		padding: 0.35rem 0.4rem;
+	}
+	/* 실습생 헤더: 과목(위) + 이름(아래) 두 줄 */
+	.col-subject {
+		display: block;
+		font-size: 0.65rem;
+		font-weight: 600;
+		color: rgba(255, 255, 255, 0.65);
+		margin-bottom: 0.15rem;
+		letter-spacing: -0.02em;
+	}
+	.col-name {
+		display: block;
+		font-size: 0.8rem;
+	}
+	/* 교사 헤더: 과목(왼쪽 고정폭) + 이름(오른쪽) 가로 배치
+	   과목명 글자 수가 달라도 이름이 항상 같은 위치에서 시작하도록 width 고정 */
+	.row-subject {
+		display: inline-block;
+		width: 56px;
+		box-sizing: border-box;
+		font-size: 0.7rem;
+		font-weight: 700;
+		padding: 0.1rem 0.3rem;
+		margin-right: 0.5rem;
+		border-radius: 999px;
+		background: #e2e8f0;
+		color: #475569;
+		text-align: center;
+		white-space: nowrap;
+		vertical-align: middle;
+	}
+	.row-name {
+		vertical-align: middle;
+	}
+	/* row-header 자체도 col-header와의 정렬을 위해 padding 고정 */
+	.matrix-table tbody .row-header {
+		padding-left: 0.6rem;
 	}
 	.matrix-table thead .row-total-header {
 		border-top-right-radius: 8px; /* 헤더 셀 위쪽 코너 라운드 */
@@ -668,8 +820,20 @@
 		color: var(--header-bg);
 		position: sticky;
 		left: 0;
-		min-width: 110px;
+		min-width: 140px;
 		z-index: 1;
+	}
+	.row-header.clickable {
+		cursor: pointer;
+		user-select: none;
+		transition: background 0.12s;
+	}
+	.row-header.clickable:hover {
+		background: #e0e7ff;
+	}
+	.row-header.clickable:focus-visible {
+		outline: 2px solid var(--header-bg);
+		outline-offset: -2px;
 	}
 	.cell {
 		font-weight: 700;
@@ -773,6 +937,17 @@
 		/* 다크 모드 시스템 설정 영향으로 흰 배경에 흰 글자가 되는 문제 방지 */
 		color: #1e293b;
 		background: white;
+	}
+	.modal-body.distribution-body {
+		padding: 1rem 1.2rem;
+	}
+	.distribution-bars {
+		gap: 0.45rem;
+	}
+	.empty-distribution {
+		text-align: center;
+		color: #64748b;
+		padding: 1.5rem;
 	}
 	.detail-table {
 		width: 100%;
