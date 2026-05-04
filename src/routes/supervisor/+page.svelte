@@ -46,7 +46,15 @@
 	let teacherRestrictions = $state<string[]>([]);
 	let loading = $state(true);
 	let approvingId = $state<string | null>(null);
-	let currentWeekIndex = $state(0); // 0, 1, 2, 3 for 4 weeks
+	// 오늘 날짜가 속한 주(월~일 단위)의 주차 인덱스 계산. 4/20(첫 주 월요일)~5/29 범위 밖이면 가장자리로 클램프.
+	function getInitialWeekIndex() {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const weekZeroMonday = new Date(2026, 3, 20); // 4/20 Mon
+		const daysDiff = Math.floor((today.getTime() - weekZeroMonday.getTime()) / 86400000);
+		return Math.min(5, Math.max(0, Math.floor(daysDiff / 7)));
+	}
+	let currentWeekIndex = $state(getInitialWeekIndex());
 
 	const supervisedStudents = $derived(selectedTeacher ? getSupervisedStudents(selectedTeacher) : []);
 
