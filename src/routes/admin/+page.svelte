@@ -296,6 +296,9 @@
 				<h1>시스템 관리자 설정</h1>
 			</div>
 			<p>사용자들을 화이트리스트에 일괄 등록하고 권한을 관리합니다.</p>
+			<div class="admin-quick-links">
+				<a href="/admin/stats" class="quick-link">📊 참관 신청 통계</a>
+			</div>
 		</header>
 
 		<div class="admin-content">
@@ -497,6 +500,34 @@
 <style>
 	.admin-header {
 		margin-bottom: 2rem;
+	}
+
+	.admin-quick-links {
+		margin-top: 0.8rem;
+		display: flex;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.quick-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.45rem 0.9rem;
+		border: 2px solid var(--header-bg);
+		border-radius: 8px;
+		background: white;
+		color: var(--header-bg);
+		font-weight: 700;
+		font-size: 0.9rem;
+		text-decoration: none;
+		transition: all 0.15s;
+		word-break: keep-all;
+	}
+
+	.quick-link:hover {
+		background: var(--header-bg);
+		color: white;
 	}
 
 	.title-group {
