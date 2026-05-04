@@ -600,7 +600,7 @@
 	.subject.clickable { cursor: pointer; transition: transform 0.1s; }
 	.subject.clickable:hover { transform: scale(1.05); }
 	.note-indicator { font-size: 0.7rem; }
-	.lesson-note-preview { font-size: 0.7rem; color: #475569; background: rgba(255,255,255,0.5); padding: 0.2rem 0.4rem; border-radius: 4px; margin-top: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; border: 1px dashed #cbd5e1; }
+	.lesson-note-preview { font-size: 0.7rem; color: #475569; background: rgba(255,255,255,0.5); padding: 0.2rem 0.4rem; border-radius: 4px; margin-top: 0.2rem; word-break: keep-all; overflow-wrap: break-word; line-height: 1.4; max-width: 100%; border: 1px dashed #cbd5e1; }
 	.class-label { font-size: 0.95rem; color: #1e293b; font-weight: 900; white-space: nowrap; }
 	.btn-toggle-restriction { font-size: 0.8rem; cursor: pointer; padding: 0.2rem 0.5rem; border: 1.5px solid #cbd5e1; border-radius: 4px; background: white; font-weight: 800; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
 	.btn-toggle-restriction.is-available { background-color: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
