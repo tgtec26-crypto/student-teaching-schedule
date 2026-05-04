@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { db, isAdmin } from '$lib/firebase';
-	import { collection, getDocs, query, where } from 'firebase/firestore';
+	import { collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
 	import {
-		Shield,
 		AlertCircle,
 		BarChart3,
 		Users,
@@ -10,7 +9,8 @@
 		Grid3x3,
 		RefreshCw,
 		X,
-		ArrowLeft
+		ArrowLeft,
+		Trash2
 	} from 'lucide-svelte';
 
 	// ---------- 상태 ----------
@@ -168,6 +168,31 @@
 		selectedTeacher = null;
 		selectedStudent = null;
 		detailItems = [];
+	}
+
+	// 개별 신청 삭제 (관리자 권한)
+	let deletingId = $state<string | null>(null);
+
+	async function deleteApplication(item: AppDoc) {
+		const confirmMsg = `이 신청을 삭제하시겠습니까?\n\n${item.date} ${item.period}교시 ${item.subject} (${item.classId})\n대상 교사: ${item.teacher}\n신청자: ${item.applicantName}\n\n이 작업은 되돌릴 수 없습니다.`;
+		if (!confirm(confirmMsg)) return;
+
+		deletingId = item.id;
+		try {
+			await deleteDoc(doc(db, 'observation_applications', item.id));
+			// 로컬 상태 갱신 (매트릭스 / 막대 / 모달 카운트 모두 자동 반영)
+			apps = apps.filter((a) => a.id !== item.id);
+			detailItems = detailItems.filter((d) => d.id !== item.id);
+			// 모든 항목이 삭제되었으면 모달 자동 닫기
+			if (detailItems.length === 0) {
+				closeDetail();
+			}
+		} catch (e: any) {
+			console.error('Delete application error:', e);
+			alert('삭제 실패: ' + (e?.message || '알 수 없는 오류'));
+		} finally {
+			deletingId = null;
+		}
 	}
 
 	// ---------- 행 헤더(교사 이름) 클릭 → 그 교사에게 신청한 실습생 분포 막대 그래프 ----------
@@ -492,6 +517,7 @@
 							<th>교시</th>
 							<th>과목</th>
 							<th>학급</th>
+							<th class="action-col">관리</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -501,6 +527,18 @@
 								<td>{item.period}교시</td>
 								<td>{item.subject}</td>
 								<td>{item.classId}</td>
+								<td class="action-cell">
+									<button
+										class="btn-delete-row"
+										onclick={() => deleteApplication(item)}
+										disabled={deletingId === item.id}
+										title="이 신청을 삭제합니다 (되돌릴 수 없음)"
+										aria-label="신청 삭제"
+									>
+										<Trash2 size={14} />
+										{deletingId === item.id ? '삭제 중...' : '삭제'}
+									</button>
+								</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -969,6 +1007,38 @@
 		color: var(--header-bg);
 		font-weight: 700;
 		font-size: 0.85rem;
+	}
+	.detail-table .action-col {
+		width: 90px;
+		text-align: center;
+	}
+	.detail-table .action-cell {
+		text-align: center;
+		padding: 0.4rem;
+	}
+	.btn-delete-row {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.3rem 0.6rem;
+		font-size: 0.8rem;
+		font-weight: 700;
+		background: #fef2f2;
+		color: #b91c1c;
+		border: 1px solid #fca5a5;
+		border-radius: 6px;
+		cursor: pointer;
+		transition: all 0.15s;
+		white-space: nowrap;
+	}
+	.btn-delete-row:hover:not(:disabled) {
+		background: #ef4444;
+		color: white;
+		border-color: #ef4444;
+	}
+	.btn-delete-row:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 
 	/* 반응형 */
