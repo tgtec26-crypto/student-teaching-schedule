@@ -403,7 +403,7 @@
 			<header class="page-header"><div class="title-group"><Users size={32} /> <h1>지도 교사 전용 페이지</h1></div><p>선생님을 선택하세요.</p></header>
 			<section class="teacher-grid">
 				{#each teachers as teacher}
-					<button class="teacher-card card" onclick={() => { selectedTeacher = teacher; currentWeekIndex = 0; }}>
+					<button class="teacher-card card" onclick={() => { selectedTeacher = teacher; currentWeekIndex = getInitialWeekIndex(); }}>
 						<span class="teacher-subject-badge" style="background-color: {getSubjectColor(teacherToSubject[teacher])}">{teacherToSubject[teacher]}</span>
 						<span class="teacher-name">{teacher}</span>
 					</button>
