@@ -26,7 +26,6 @@
 		collection,
 		query,
 		where,
-		onSnapshot,
 		getDoc,
 		getDocs,
 		setDoc,
@@ -118,18 +117,20 @@
 		checking = false;
 	});
 
+	// 신청 데이터: 진입/주 변경 시 1회 fetch + 본인 신청/취소 직후 옵티미스틱 갱신.
+	// 이전: onSnapshot 으로 다른 사용자 신청마다 모든 활성 클라이언트에 push (점심 spike 의 주범).
+	// Trade-off: 다른 사용자가 동시에 신청한 결과는 다음 진입/주 변경 시까지 stale.
 	$effect(() => {
 		if (checking || !$user) return;
-		// 현재 보고 있는 1주(5일)치만 구독 — Firestore read 절감 (이전: 4주 = 20일치 전체 구독)
 		const rangeStart = weekDates[0];
 		const rangeEnd = weekDates[weekDates.length - 1];
-		const qApps = query(collection(db, 'observation_applications'), where('date', '>=', rangeStart), where('date', '<=', rangeEnd));
-		const unsubApps = onSnapshot(qApps, (snap) => {
-			applications = snap.docs.map(d => ({id: d.id, ...d.data()}));
+		(async () => {
+			const qApps = query(collection(db, 'observation_applications'), where('date', '>=', rangeStart), where('date', '<=', rangeEnd));
+			const snap = await getDocs(qApps);
+			applications = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 			loading = false;
 			autoApproveExpiredApplications(applications);
-		});
-		return () => { unsubApps(); };
+		})();
 	});
 
 	// 차단 정보는 자주 안 바뀌므로 진입 시 1회 fetch — 이전: onSnapshot 으로 push 마다 read 발생.
@@ -148,13 +149,17 @@
 		})();
 	});
 
-	// 자동 승인 안전망: 메인 진입 시 1회만 전체 PENDING 신청을 가져와 24h 경과 건 처리.
-	// 메인 구독을 1주치로 좁힌 뒤 다른 주의 PENDING 자동 승인이 누락되지 않도록 보강.
+	// 자동 승인 안전망: 1시간에 1번만 전체 PENDING fetch 후 24h 경과 건 처리.
+	// localStorage 로 브라우저당 빈도 제한 (자주 reload 해도 read 폭증 안 함).
 	let pendingSweepDone = $state(false);
 	$effect(() => {
 		if (checking || !$user || pendingSweepDone) return;
 		pendingSweepDone = true;
 		(async () => {
+			const SWEEP_INTERVAL_MS = 60 * 60 * 1000;
+			const last = typeof localStorage !== 'undefined' ? parseInt(localStorage.getItem('pendingSweepAt') || '0') : 0;
+			if (Date.now() - last < SWEEP_INTERVAL_MS) return;
+			if (typeof localStorage !== 'undefined') localStorage.setItem('pendingSweepAt', String(Date.now()));
 			const qPending = query(collection(db, 'observation_applications'), where('status', '==', 'PENDING'));
 			const snap = await getDocs(qPending);
 			autoApproveExpiredApplications(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -203,7 +208,12 @@
 		if ($isSupervisor && !$isAdmin) return alert('지도교사는 참관 신청을 할 수 없습니다.');
 		if (restrictedDates.includes(targetDate)) return alert('해당 날짜는 신청 불가일입니다.');
 		const existing = applications.find(a => a.applicantEmail === $user.email && a.date === targetDate && a.classId === classId && a.period === period);
-		if (existing) { if (confirm('신청을 취소하시겠습니까?')) await deleteDoc(doc(db, 'observation_applications', existing.id)); }
+		if (existing) {
+			if (confirm('신청을 취소하시겠습니까?')) {
+				await deleteDoc(doc(db, 'observation_applications', existing.id));
+				applications = applications.filter((a) => a.id !== existing.id);
+			}
+		}
 		else {
 			// 신청 기간 제한 로직 (수업일 및 공휴일 반영)
 			const now = new Date();
@@ -328,11 +338,16 @@
 			return;
 		}
 
+		const ts = Timestamp.now();
 		await setDoc(appRef, {
 			date: targetDate, classId, period, subject, teacher, teacherEmail,
 			applicantEmail, applicantName, applicantSubject,
-			status: status, timestamp: Timestamp.now()
+			status: status, timestamp: ts
 		});
+		applications = [
+			...applications.filter((a) => a.id !== appId),
+			{ id: appId, date: targetDate, classId, period, subject, teacher, teacherEmail, applicantEmail, applicantName, applicantSubject, status, timestamp: ts }
+		];
 
 		const url = teacherWebhooks[teacher];
 		if (url) {

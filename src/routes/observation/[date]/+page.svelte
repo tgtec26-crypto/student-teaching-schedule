@@ -9,7 +9,6 @@
 		collection,
 		query,
 		where,
-		onSnapshot,
 		getDoc,
 		getDocs,
 		setDoc,
@@ -183,27 +182,21 @@
 		})
 	);
 
-	// Firestore Listeners
-	let unsubscribeApps: () => void;
-
+	// 신청 데이터: 진입/주 변경 시 1회 fetch + 본인 신청/취소 직후 옵티미스틱 갱신.
+	// 이전: onSnapshot 으로 다른 사용자 신청마다 push (점심 spike 의 주범).
 	$effect(() => {
-		// 현재 보고 있는 1주(5일)치만 구독 — Firestore read 절감 (이전: 4주 = 20일치 전체 구독)
 		const rangeStart = weekDates[0];
 		const rangeEnd = weekDates[weekDates.length - 1];
-		const qApps = query(
-			collection(db, 'observation_applications'),
-			where('date', '>=', rangeStart),
-			where('date', '<=', rangeEnd)
-		);
-
-		unsubscribeApps = onSnapshot(qApps, (snapshot) => {
-			applications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+		(async () => {
+			const qApps = query(
+				collection(db, 'observation_applications'),
+				where('date', '>=', rangeStart),
+				where('date', '<=', rangeEnd)
+			);
+			const snapshot = await getDocs(qApps);
+			applications = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 			loading = false;
-		});
-
-		return () => {
-			if (unsubscribeApps) unsubscribeApps();
-		};
+		})();
 	});
 
 	// 차단 정보는 자주 안 바뀌므로 진입 시 1회 fetch — 이전: onSnapshot 으로 push 마다 read 발생.
@@ -256,11 +249,16 @@
 			return;
 		}
 
+		const ts = Timestamp.now();
 		await setDoc(appRef, {
 			date: targetDate, classId, period, subject, teacher, teacherEmail,
 			applicantEmail, applicantName, applicantSubject,
-			status: status, timestamp: Timestamp.now()
+			status: status, timestamp: ts
 		});
+		applications = [
+			...applications.filter((a) => a.id !== appId),
+			{ id: appId, date: targetDate, classId, period, subject, teacher, teacherEmail, applicantEmail, applicantName, applicantSubject, status, timestamp: ts }
+		];
 
 		const url = teacherWebhooks[teacher];
 		if (url) {
@@ -299,6 +297,7 @@
 		if (existingApp) {
 			if (confirm('신청을 취소하시겠습니까?')) {
 				await deleteDoc(doc(db, 'observation_applications', existingApp.id));
+				applications = applications.filter((a) => a.id !== existingApp.id);
 			}
 		} else {
 			// 신청 기간 제한 로직 (수업일 및 공휴일 반영)

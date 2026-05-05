@@ -196,16 +196,19 @@
 	$effect(() => {
 		if (!selectedTeacher) { autoApprove = false; defaultNote = ''; lessonNotes = {}; return; }
 		const teacherKey = selectedTeacher.trim();
+		// teacher_settings 는 단일 문서라 push 비용이 작아 onSnapshot 유지.
 		const unsubSettings = onSnapshot(doc(db, 'teacher_settings', teacherKey), (docSnap) => {
 			autoApprove = docSnap.exists() ? docSnap.data().autoApprove || false : false;
 			defaultNote = docSnap.exists() ? docSnap.data().defaultNote || '' : '';
 		});
-		const unsubNotes = onSnapshot(query(collection(db, 'lesson_notes'), where('teacher', '==', teacherKey)), (snapshot) => {
+		// lesson_notes 는 본인만 작성 — 진입 시 1회 fetch + 저장/삭제 직후 로컬 갱신.
+		(async () => {
+			const snapshot = await getDocs(query(collection(db, 'lesson_notes'), where('teacher', '==', teacherKey)));
 			const notes: Record<string, string> = {};
-			snapshot.docs.forEach(d => { notes[d.id] = d.data().message; });
+			snapshot.docs.forEach((d) => { notes[d.id] = d.data().message; });
 			lessonNotes = notes;
-		});
-		return () => { unsubSettings(); unsubNotes(); };
+		})();
+		return () => { unsubSettings(); };
 	});
 
 	// 교사 차단 정보(restricted_lessons)는 본인이 토글 — 진입 시 1회 fetch + 토글 후 로컬 갱신.
@@ -252,15 +255,19 @@
 		try {
 			if (noteInput.trim() === '') {
 				await deleteDoc(doc(db, 'lesson_notes', noteId));
+				const { [noteId]: _omit, ...rest } = lessonNotes;
+				lessonNotes = rest;
 			} else {
+				const trimmed = noteInput.trim();
 				await setDoc(doc(db, 'lesson_notes', noteId), {
 					teacher: teacherKey,
 					date,
 					period,
 					classId,
-					message: noteInput.trim(),
+					message: trimmed,
 					updatedAt: new Date()
 				});
+				lessonNotes = { ...lessonNotes, [noteId]: trimmed };
 			}
 			showLessonNoteModal = false;
 			editingNoteContext = null;
