@@ -3,6 +3,12 @@
  */
 
 const PROJECT_ID = 'testprojecttgtec';
+
+// GAS 시간 트리거 주기 (분). GAS 콘솔의 트리거 설정과 반드시 동일해야 한다.
+// 알림 발송 윈도우 = [leadTime, leadTime + TRIGGER_INTERVAL_MIN) 으로 사용되므로
+// 이 값을 늘리면 비용은 절감되지만 알림이 최대 이 값만큼 일찍 발송될 수 있다.
+const TRIGGER_INTERVAL_MIN = 10;
+
 const CLASS_TIMES = {
   '1': '08:40',
   '2': '09:35',
@@ -137,14 +143,18 @@ function processUserNotif(userEmail, appData, role) {
     if (!isEnabled) return;
 
     const startTime = CLASS_TIMES[appData.period.stringValue];
-    if (getMinutesDiff(startTime) === leadTime) {
+    // 윈도우 비교: 발송 시점이 [leadTime, leadTime + TRIGGER_INTERVAL_MIN) 분 사이에
+    // 들어오면 발송. 트리거 drift / leadTime ≠ 트리거 주기 약수 케이스에서도 누락 없음.
+    // 같은 알림 키는 24h cache 로 중복 방지하므로 윈도우 안에서 첫 트리거에만 발송됨.
+    const diff = getMinutesDiff(startTime);
+    if (diff >= leadTime && diff < leadTime + TRIGGER_INTERVAL_MIN) {
       const cacheKey = `notif_${appData.date.stringValue}_${appData.period.stringValue}_${userEmail}_${role}`;
       const cache = CacheService.getScriptCache();
       if (cache.get(cacheKey)) return;
 
       if (role === 'STUDENT') sendReminderEmail(userEmail, appData);
       else sendTeacherChatReminder(appData);
-      
+
       cache.put(cacheKey, 'sent', 3600 * 24);
     }
   } catch (e) { console.error("❌ 에러: " + userEmail, e.toString()); }
