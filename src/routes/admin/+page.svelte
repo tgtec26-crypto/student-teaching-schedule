@@ -8,7 +8,6 @@
 		query,
 		orderBy,
 		setDoc,
-		onSnapshot,
 		deleteDoc
 	} from 'firebase/firestore';
 	import { onMount } from 'svelte';
@@ -103,6 +102,7 @@
 		try {
 			if (isCurrentlyRestricted) {
 				await deleteDoc(doc(db, 'teacher_restrictions', displayName));
+				teacherRestrictions = teacherRestrictions.filter((n) => n !== displayName);
 				message = { text: `${displayName} 선생님의 참관 제한이 해제되었습니다.`, type: 'success' };
 			} else {
 				if (!confirm(`${displayName} 선생님의 모든 수업을 참관 불가로 전환하시겠습니까?`)) return;
@@ -111,6 +111,7 @@
 					updatedAt: new Date(),
 					updatedBy: $user?.email
 				});
+				teacherRestrictions = [...teacherRestrictions, displayName];
 				message = { text: `${displayName} 선생님의 참관이 전면 차단되었습니다.`, type: 'success' };
 			}
 		} catch (e: any) {
@@ -119,17 +120,16 @@
 		}
 	}
 
-	onMount(() => {
+	// 차단 정보는 admin 본인이 토글 — 진입 시 1회 fetch + 토글 후 로컬 갱신.
+	// 이전: onSnapshot 으로 push 마다 read 발생.
+	onMount(async () => {
 		fetchUsers();
-
-		// Set up subscription once
-		const unsubscribe = onSnapshot(collection(db, 'teacher_restrictions'), (snapshot) => {
-			teacherRestrictions = snapshot.docs.map((doc) => doc.id);
-		}, (err) => {
-			console.error('Snapshot error:', err);
-		});
-
-		return unsubscribe;
+		try {
+			const snap = await getDocs(collection(db, 'teacher_restrictions'));
+			teacherRestrictions = snap.docs.map((d) => d.id);
+		} catch (err) {
+			console.error('teacher_restrictions load error:', err);
+		}
 	});
 
 	async function addUsers() {

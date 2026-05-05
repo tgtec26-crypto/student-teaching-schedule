@@ -9,7 +9,8 @@
 		updateDoc,
 		setDoc,
 		deleteDoc,
-		getDoc
+		getDoc,
+		getDocs
 	} from 'firebase/firestore';
 	import { timetableData, scheduleOverrides } from '$lib/timetableData';
 	import {
@@ -171,8 +172,18 @@
 		}));
 
 	$effect(() => {
-		const qApps = query(collection(db, 'observation_applications'), 
-			where('date', '>=', allWeekDates[0]), where('date', '<=', allWeekDates[29]));
+		// 선택된 교사 한정으로 구독 — 이전: 모든 신청 30일치를 다 가져와 클라이언트 필터링.
+		// teacher 필터를 쿼리로 옮기면서 read 수를 (전체 신청 / 교사 수) 배 만큼 절감.
+		if (!selectedTeacher) {
+			allApplications = [];
+			loading = false;
+			return;
+		}
+		const teacherKey = selectedTeacher.trim();
+		const qApps = query(
+			collection(db, 'observation_applications'),
+			where('teacher', '==', teacherKey)
+		);
 		return onSnapshot(qApps, (snapshot) => {
 			allApplications = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 			loading = false;
@@ -183,11 +194,8 @@
 	let lessonNotes = $state<Record<string, string>>({});
 
 	$effect(() => {
-		if (!selectedTeacher) { restrictions = []; autoApprove = false; defaultNote = ''; lessonNotes = {}; return; }
+		if (!selectedTeacher) { autoApprove = false; defaultNote = ''; lessonNotes = {}; return; }
 		const teacherKey = selectedTeacher.trim();
-		const unsubRestricted = onSnapshot(query(collection(db, 'restricted_lessons'), where('teacher', '==', teacherKey)), (snapshot) => {
-			restrictions = snapshot.docs.map((doc) => doc.id);
-		});
 		const unsubSettings = onSnapshot(doc(db, 'teacher_settings', teacherKey), (docSnap) => {
 			autoApprove = docSnap.exists() ? docSnap.data().autoApprove || false : false;
 			defaultNote = docSnap.exists() ? docSnap.data().defaultNote || '' : '';
@@ -197,7 +205,18 @@
 			snapshot.docs.forEach(d => { notes[d.id] = d.data().message; });
 			lessonNotes = notes;
 		});
-		return () => { unsubRestricted(); unsubSettings(); unsubNotes(); };
+		return () => { unsubSettings(); unsubNotes(); };
+	});
+
+	// 교사 차단 정보(restricted_lessons)는 본인이 토글 — 진입 시 1회 fetch + 토글 후 로컬 갱신.
+	// 이전: onSnapshot 으로 push 마다 read 발생.
+	$effect(() => {
+		if (!selectedTeacher) { restrictions = []; return; }
+		const teacherKey = selectedTeacher.trim();
+		(async () => {
+			const snap = await getDocs(query(collection(db, 'restricted_lessons'), where('teacher', '==', teacherKey)));
+			restrictions = snap.docs.map((d) => d.id);
+		})();
 	});
 
 	function openDefaultNoteModal() {
@@ -262,7 +281,11 @@
 		}
 	});
 
-	onMount(() => { return onSnapshot(collection(db, 'teacher_restrictions'), (snapshot) => { teacherRestrictions = snapshot.docs.map((doc) => doc.id); }); });
+	// 전체 차단 정보(teacher_restrictions)는 admin 만 토글 — 진입 시 1회 fetch 로 충분.
+	onMount(async () => {
+		const snap = await getDocs(collection(db, 'teacher_restrictions'));
+		teacherRestrictions = snap.docs.map((d) => d.id);
+	});
 
 	async function toggleAutoApprove() {
 		if (!selectedTeacher) return;
@@ -284,8 +307,13 @@
 		}
 		const teacherKey = selectedTeacher.trim();
 		const resId = `${teacherKey}_${date}_${period}_${classId}`;
-		if (restrictions.includes(resId)) await deleteDoc(doc(db, 'restricted_lessons', resId));
-		else await setDoc(doc(db, 'restricted_lessons', resId), { teacher: teacherKey, date, period, classId, updatedAt: new Date() });
+		if (restrictions.includes(resId)) {
+			await deleteDoc(doc(db, 'restricted_lessons', resId));
+			restrictions = restrictions.filter((id) => id !== resId);
+		} else {
+			await setDoc(doc(db, 'restricted_lessons', resId), { teacher: teacherKey, date, period, classId, updatedAt: new Date() });
+			restrictions = [...restrictions, resId];
+		}
 	}
 
 	async function approveApplication(e: Event, appId: string) {

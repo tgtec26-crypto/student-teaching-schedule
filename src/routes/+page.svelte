@@ -28,6 +28,7 @@
 		where,
 		onSnapshot,
 		getDoc,
+		getDocs,
 		setDoc,
 		deleteDoc,
 		doc,
@@ -119,15 +120,45 @@
 
 	$effect(() => {
 		if (checking || !$user) return;
-		const qApps = query(collection(db, 'observation_applications'), where('date', '>=', allWeekDates[0]), where('date', '<=', allWeekDates[19]));
+		// 현재 보고 있는 1주(5일)치만 구독 — Firestore read 절감 (이전: 4주 = 20일치 전체 구독)
+		const rangeStart = weekDates[0];
+		const rangeEnd = weekDates[weekDates.length - 1];
+		const qApps = query(collection(db, 'observation_applications'), where('date', '>=', rangeStart), where('date', '<=', rangeEnd));
 		const unsubApps = onSnapshot(qApps, (snap) => {
 			applications = snap.docs.map(d => ({id: d.id, ...d.data()}));
 			loading = false;
 			autoApproveExpiredApplications(applications);
 		});
-		const unsubRest = onSnapshot(collection(db, 'restricted_lessons'), (snap) => { restrictions = snap.docs.map(d => d.id); });
-		const unsubGlobal = onSnapshot(collection(db, 'teacher_restrictions'), (snap) => { teacherRestrictions = snap.docs.map(d => d.id); });
-		return () => { unsubApps(); unsubRest(); unsubGlobal(); };
+		return () => { unsubApps(); };
+	});
+
+	// 차단 정보는 자주 안 바뀌므로 진입 시 1회 fetch — 이전: onSnapshot 으로 push 마다 read 발생.
+	// 다른 사용자가 차단을 변경해도 다음 진입 시까지 stale (수용 가능한 trade-off).
+	let restrictionsFetched = $state(false);
+	$effect(() => {
+		if (checking || !$user || restrictionsFetched) return;
+		restrictionsFetched = true;
+		(async () => {
+			const [restSnap, globalSnap] = await Promise.all([
+				getDocs(collection(db, 'restricted_lessons')),
+				getDocs(collection(db, 'teacher_restrictions'))
+			]);
+			restrictions = restSnap.docs.map(d => d.id);
+			teacherRestrictions = globalSnap.docs.map(d => d.id);
+		})();
+	});
+
+	// 자동 승인 안전망: 메인 진입 시 1회만 전체 PENDING 신청을 가져와 24h 경과 건 처리.
+	// 메인 구독을 1주치로 좁힌 뒤 다른 주의 PENDING 자동 승인이 누락되지 않도록 보강.
+	let pendingSweepDone = $state(false);
+	$effect(() => {
+		if (checking || !$user || pendingSweepDone) return;
+		pendingSweepDone = true;
+		(async () => {
+			const qPending = query(collection(db, 'observation_applications'), where('status', '==', 'PENDING'));
+			const snap = await getDocs(qPending);
+			autoApproveExpiredApplications(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+		})();
 	});
 
 	// 3. Teacher Mapping
@@ -176,10 +207,12 @@
 		else {
 			// 신청 기간 제한 로직 (수업일 및 공휴일 반영)
 			const now = new Date();
-			const nowStr = now.toISOString().split('T')[0];
+			// KST 기준 YYYY-MM-DD (toISOString 은 UTC 라 한국 새벽 시간대에 전날로 계산되는 버그 방지)
+			const toKstDateStr = (d: Date) => d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+			const nowStr = toKstDateStr(now);
 			const nowDay = now.getDay();
 			const systemHolidays = ['2026-05-05', '2026-05-25'];
-			
+
 			// 0. 오늘이 휴일인지 체크 (신청 행위 자체를 차단)
 			if (nowDay === 0 || nowDay === 6 || systemHolidays.includes(nowStr)) {
 				return alert('주말 및 공휴일에는 참관 신청을 할 수 없습니다.');
@@ -187,10 +220,10 @@
 
 			const [y, m, d_] = targetDate.split('-').map(Number);
 			const lessonDate = new Date(y, m - 1, d_);
-			
+
 			// 휴일 여부 판별 함수
 			const isClosed = (d: Date) => {
-				const s = d.toISOString().split('T')[0];
+				const s = toKstDateStr(d);
 				const day = d.getDay();
 				return day === 0 || day === 6 || systemHolidays.includes(s);
 			};
