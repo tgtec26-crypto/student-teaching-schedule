@@ -68,29 +68,59 @@ function doPost(e) {
 }
 
 function checkAndSendNotifications() {
-  const now = new Date();
-  const todayStr = Utilities.formatDate(now, "Asia/Seoul", "yyyy-MM-dd");
+  // ─── 1단계: 비활성 시간대 즉시 종료 (Firestore read 절감) ───
+  // 알림은 수업 시작 전 leadTime(기본 10분 전)에만 발송 가능.
+  // 1교시 08:40 시작, 7교시 15:00 시작이므로 평일 07시~17시 외에는
+  // 알림 보낼 신청이 0건임이 보장된다 → 그 시간엔 read 자체를 건너뛴다.
+  const isoDayOfWeek = parseInt(Utilities.formatDate(new Date(), "Asia/Seoul", "u"), 10); // 1=월 ... 7=일
+  const kstHour = parseInt(Utilities.formatDate(new Date(), "Asia/Seoul", "HH"), 10);
+  if (isoDayOfWeek >= 6 || kstHour < 7 || kstHour >= 17) return; // 토/일 또는 7~17시 외
 
-  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/observation_applications`;
-  const options = { method: 'get', headers: { 'Authorization': 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true };
-  
+  const todayStr = Utilities.formatDate(new Date(), "Asia/Seoul", "yyyy-MM-dd");
+
+  // ─── 2단계: 서버 사이드 쿼리 필터링 (이전: 전체 컬렉션 fetch) ───
+  // runQuery 엔드포인트로 (date == today AND status == APPROVED) 만 fetch.
+  // 신청이 누적되어도 매 호출당 read 가 비례 증가하지 않는다.
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery`;
+  const queryBody = {
+    structuredQuery: {
+      from: [{ collectionId: 'observation_applications' }],
+      where: {
+        compositeFilter: {
+          op: 'AND',
+          filters: [
+            { fieldFilter: { field: { fieldPath: 'date' }, op: 'EQUAL', value: { stringValue: todayStr } } },
+            { fieldFilter: { field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'APPROVED' } } }
+          ]
+        }
+      }
+    }
+  };
+  const options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'Authorization': 'Bearer ' + ScriptApp.getOAuthToken() },
+    payload: JSON.stringify(queryBody),
+    muteHttpExceptions: true
+  };
+
   try {
     const response = UrlFetchApp.fetch(url, options);
-    const data = JSON.parse(response.getContentText());
-    if (response.getResponseCode() !== 200 || !data.documents) return;
+    if (response.getResponseCode() !== 200) return;
+    const results = JSON.parse(response.getContentText());
+    if (!Array.isArray(results)) return;
 
-    data.documents.forEach(doc => {
-      const fields = doc.fields;
-      if (!fields.date || !fields.status || fields.date.stringValue !== todayStr || fields.status.stringValue !== 'APPROVED') return;
-
-      const period = fields.period.stringValue;
-      const startTime = CLASS_TIMES[period];
-      if (!startTime) return;
+    // runQuery 응답: [{ document: {...} }, ...] (매칭이 0건이면 [{ readTime: "..." }] 형태)
+    results.forEach(item => {
+      if (!item.document) return;
+      const fields = item.document.fields;
+      const period = fields.period && fields.period.stringValue;
+      if (!CLASS_TIMES[period]) return;
 
       if (fields.applicantEmail) processUserNotif(fields.applicantEmail.stringValue, fields, 'STUDENT');
       if (fields.teacherEmail) processUserNotif(fields.teacherEmail.stringValue, fields, 'SUPERVISOR');
     });
-  } catch (e) { console.error("❌ 에러: " + e.toString()); }
+  } catch (e) { console.error("❌ checkAndSendNotifications 에러: " + e.toString()); }
 }
 
 function processUserNotif(userEmail, appData, role) {
