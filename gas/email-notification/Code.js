@@ -117,6 +117,9 @@ function checkAndSendNotifications() {
     if (!Array.isArray(results)) return;
 
     // runQuery 응답: [{ document: {...} }, ...] (매칭이 0건이면 [{ readTime: "..." }] 형태)
+    // 학생 알림은 신청 1건당 1통 발송, 교사 알림은 (교사·날짜·교시) 단위로 묶어 1통에 전체 명단 발송.
+    const teacherGroups = {}; // groupKey -> { teacherEmail, fields, applicants: [{name, subject}] }
+
     results.forEach(item => {
       if (!item.document) return;
       const fields = item.document.fields;
@@ -124,9 +127,52 @@ function checkAndSendNotifications() {
       if (!CLASS_TIMES[period]) return;
 
       if (fields.applicantEmail) processUserNotif(fields.applicantEmail.stringValue, fields, 'STUDENT');
-      if (fields.teacherEmail) processUserNotif(fields.teacherEmail.stringValue, fields, 'SUPERVISOR');
+
+      if (fields.teacherEmail) {
+        const teacherEmail = fields.teacherEmail.stringValue;
+        const date = fields.date && fields.date.stringValue;
+        const groupKey = `${teacherEmail}|${date}|${period}`;
+        if (!teacherGroups[groupKey]) {
+          teacherGroups[groupKey] = { teacherEmail, fields, applicants: [] };
+        }
+        teacherGroups[groupKey].applicants.push({
+          name: fields.applicantName ? fields.applicantName.stringValue : '',
+          subject: fields.applicantSubject ? fields.applicantSubject.stringValue : '미지정'
+        });
+      }
+    });
+
+    Object.keys(teacherGroups).forEach(key => {
+      const g = teacherGroups[key];
+      processTeacherGroupNotif(g.teacherEmail, g.fields, g.applicants);
     });
   } catch (e) { console.error("❌ checkAndSendNotifications 에러: " + e.toString()); }
+}
+
+function processTeacherGroupNotif(teacherEmail, appData, applicants) {
+  const userUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/users/${teacherEmail}`;
+  const options = { method: 'get', headers: { 'Authorization': 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true };
+
+  try {
+    const response = UrlFetchApp.fetch(userUrl, options);
+    if (response.getResponseCode() !== 200) return;
+    const userData = JSON.parse(response.getContentText());
+    const fields = userData.fields || {};
+    const isEnabled = fields.notifEnabled ? fields.notifEnabled.booleanValue : false;
+    const leadTime = fields.notifLeadTime ? Number(fields.notifLeadTime.integerValue) : 10;
+    if (!isEnabled) return;
+
+    const startTime = CLASS_TIMES[appData.period.stringValue];
+    const diff = getMinutesDiff(startTime);
+    if (diff >= leadTime && diff < leadTime + TRIGGER_INTERVAL_MIN) {
+      const cacheKey = `notif_${appData.date.stringValue}_${appData.period.stringValue}_${teacherEmail}_SUPERVISOR`;
+      const cache = CacheService.getScriptCache();
+      if (cache.get(cacheKey)) return;
+
+      sendTeacherChatReminder(appData, applicants);
+      cache.put(cacheKey, 'sent', 3600 * 24);
+    }
+  } catch (e) { console.error("❌ 에러: " + teacherEmail, e.toString()); }
 }
 
 function processUserNotif(userEmail, appData, role) {
@@ -153,7 +199,6 @@ function processUserNotif(userEmail, appData, role) {
       if (cache.get(cacheKey)) return;
 
       if (role === 'STUDENT') sendReminderEmail(userEmail, appData);
-      else sendTeacherChatReminder(appData);
 
       cache.put(cacheKey, 'sent', 3600 * 24);
     }
@@ -185,19 +230,22 @@ function sendReminderEmail(email, data) {
   MailApp.sendEmail(email, mailSubject, body);
 }
 
-function sendTeacherChatReminder(data) {
+function sendTeacherChatReminder(data, applicants) {
   const teacherName = data.teacher.stringValue;
   const webhookUrl = TEACHER_WEBHOOKS[teacherName];
   if (!webhookUrl) return;
 
   const period = data.period.stringValue;
   const subject = data.subject.stringValue;
-  const applicantName = data.applicantName.stringValue;
-  const applicantSubject = data.applicantSubject ? data.applicantSubject.stringValue : "미지정";
   const classInfo = data.classId ? data.classId.stringValue : "교실";
 
+  const list = applicants.map(a => `  • [${a.subject}] ${a.name}`).join('\n');
+  const headerLine = applicants.length === 1
+    ? `잠시 후 ${period}교시 수업에 참관 실습생이 방문할 예정입니다.`
+    : `잠시 후 ${period}교시 수업에 참관 실습생 ${applicants.length}명이 방문할 예정입니다.`;
+
   const message = {
-    text: `📢 *참관 수업 시작 알림*\n\n잠시 후 ${period}교시 수업에 참관 실습생이 방문할 예정입니다.\n\n• *실습생*: [${applicantSubject}] ${applicantName}\n• *수업*: ${subject} (${classInfo})\n• *시작 시간*: ${CLASS_TIMES[period]}`
+    text: `📢 *참관 수업 시작 알림*\n\n${headerLine}\n\n• *실습생*:\n${list}\n• *수업*: ${subject} (${classInfo})\n• *시작 시간*: ${CLASS_TIMES[period]}`
   };
 
   UrlFetchApp.fetch(webhookUrl, { method: 'post', contentType: 'application/json', payload: JSON.stringify(message) });
