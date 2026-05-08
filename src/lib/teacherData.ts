@@ -35,7 +35,7 @@ export const teacherMetadata: Record<string, { name: string; subject: string }> 
 	'rockjade@snu-g.ms.kr': { name: '김옥배', subject: '도덕' },
 	'rugger8kr@snu-g.ms.kr': { name: '이성운', subject: '체육' },
 	'squarelip@snu-g.ms.kr': { name: '김은희', subject: '과학' },
-	'terror14@snu-g.ms.kr': { name: '황경진', subject: '사회' },
+	'terror14@snu-g.ms.kr': { name: '황경진', subject: '지리' },
 	'tgtec26@snu-g.ms.kr': { name: '최종훈', subject: '생명' },
 	'umbang55@snu-g.ms.kr': { name: '엄인우', subject: '체육' },
 	'urimal@snu-g.ms.kr': { name: '최인영', subject: '국어' },

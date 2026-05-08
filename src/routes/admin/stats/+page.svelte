@@ -1,6 +1,21 @@
 <script lang="ts">
 	import { db, isAdmin } from '$lib/firebase';
+	import { teacherMetadata } from '$lib/teacherData';
 	import { collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
+
+	// 과목 정규화: 교육과정/대학 학과명 차이로 같은 분야가 다른 이름으로 등록되는 경우를 통일.
+	// 예) 교육과정명 "생명과학" ↔ 대학 "생물교육과" 출신 실습생의 "생물" → 같은 과목으로 취급.
+	// 예) 교육과정명 "도덕" ↔ 대학 "윤리교육과" 출신 실습생의 "윤리" → 같은 과목으로 취급.
+	const SUBJECT_ALIASES: Record<string, string> = {
+		생물: '생명',
+		생명: '생명',
+		윤리: '도덕',
+		도덕: '도덕'
+	};
+	function normalizeSubject(s: string): string {
+		if (!s) return '';
+		return SUBJECT_ALIASES[s] ?? s;
+	}
 	import {
 		AlertCircle,
 		BarChart3,
@@ -69,13 +84,18 @@
 
 	// ---------- 집계 (모두 derived) ----------
 
-	// 교사별 신청 수 (수업 과목도 함께 집계)
+	// 교사별 신청 수 (메인 과목은 teacherMetadata 우선, 없으면 신청 doc 의 subject 사용)
+	// — 신청 doc 의 a.subject 는 그 수업의 과목(예: "과학B")이라 교사가 여러 과목을
+	//   가르치면 첫 발견에 따라 잘못된 과목이 표시되는 문제가 있었음.
 	const teacherCounts = $derived.by(() => {
 		const m = new Map<string, { count: number; subject: string }>();
 		for (const a of apps) {
-			const cur = m.get(a.teacher) ?? { count: 0, subject: a.subject ?? '' };
+			const cur = m.get(a.teacher) ?? { count: 0, subject: '' };
 			cur.count += 1;
-			if (!cur.subject && a.subject) cur.subject = a.subject;
+			if (!cur.subject) {
+				const meta = a.teacherEmail ? teacherMetadata[a.teacherEmail] : undefined;
+				cur.subject = meta?.subject || a.subject || '';
+			}
 			m.set(a.teacher, cur);
 		}
 		return [...m.entries()]
@@ -98,25 +118,53 @@
 	});
 
 	// 매트릭스: row=teacher, col=student, value=count
-	type MatrixRow = { teacher: string; total: number; cells: Map<string, number> };
+	// 행/열 합계 모두 (같은 과목 + 다른 과목) 으로 분리 표기.
+	type MatrixRow = {
+		teacher: string;
+		total: number;
+		sameSubjectTotal: number;
+		differentSubjectTotal: number;
+		cells: Map<string, number>;
+	};
+	type ColTotal = { total: number; sameSubjectTotal: number; differentSubjectTotal: number };
 	const matrix = $derived.by(() => {
 		const teachers = teacherCounts.map((t) => t.name); // 신청 많은 순
 		const students = studentCounts.map((s) => s.name); // 신청 많은 순
+		const tSubjMap = new Map(teacherCounts.map((t) => [t.name, t.subject]));
 
 		const rows: MatrixRow[] = teachers.map((t) => ({
 			teacher: t,
 			total: 0,
+			sameSubjectTotal: 0,
+			differentSubjectTotal: 0,
 			cells: new Map<string, number>()
 		}));
 		const rowIndex = new Map(rows.map((r, i) => [r.teacher, i]));
-		const colTotals = new Map<string, number>();
+		const colTotals = new Map<string, ColTotal>();
 
 		for (const a of apps) {
 			const r = rows[rowIndex.get(a.teacher)!];
 			if (!r) continue;
 			r.cells.set(a.applicantName, (r.cells.get(a.applicantName) ?? 0) + 1);
 			r.total += 1;
-			colTotals.set(a.applicantName, (colTotals.get(a.applicantName) ?? 0) + 1);
+
+			// 과목 일치 여부: 교사 메인 과목(teacherMetadata 기준) vs 실습생 전공
+			// 동의어(생명 ↔ 생물 등)는 normalizeSubject 로 같은 키로 통일 후 비교.
+			const tSubj = normalizeSubject(tSubjMap.get(a.teacher) ?? '');
+			const sSubj = normalizeSubject(a.applicantSubject ?? '');
+			const isSame = !!(tSubj && sSubj && tSubj === sSubj);
+			if (isSame) r.sameSubjectTotal += 1;
+			else r.differentSubjectTotal += 1;
+
+			const ct = colTotals.get(a.applicantName) ?? {
+				total: 0,
+				sameSubjectTotal: 0,
+				differentSubjectTotal: 0
+			};
+			ct.total += 1;
+			if (isSame) ct.sameSubjectTotal += 1;
+			else ct.differentSubjectTotal += 1;
+			colTotals.set(a.applicantName, ct);
 		}
 
 		return { teachers, students, rows, colTotals };
@@ -357,7 +405,10 @@
 			<section class="matrix-section card">
 				<div class="section-header">
 					<Grid3x3 size={20} />
-					<h3>교사 × 실습생 매트릭스 (교사명 / 셀 클릭 → 상세)</h3>
+					<h3>
+						교사 × 실습생 매트릭스 (교사명 / 셀 클릭 → 상세)
+						<span class="section-subtitle">합계: 총 (같은 과목 + 다른 과목)</span>
+					</h3>
 				</div>
 				<div class="matrix-scroll">
 					<table class="matrix-table">
@@ -418,13 +469,34 @@
 											{v > 0 ? v : ''}
 										</td>
 									{/each}
-									<td class="row-total">{r.total}</td>
+									<td
+										class="row-total"
+										title="같은 과목 실습생 {r.sameSubjectTotal}건 + 다른 과목 실습생 {r.differentSubjectTotal}건"
+									>
+										{r.total}
+										<span class="row-total-breakdown"
+											>({r.sameSubjectTotal}+{r.differentSubjectTotal})</span
+										>
+									</td>
 								</tr>
 							{/each}
 							<tr class="footer-row">
 								<th class="row-header">합계</th>
 								{#each matrix.students as st}
-									<td class="col-total">{matrix.colTotals.get(st) ?? 0}</td>
+									{@const ct = matrix.colTotals.get(st) ?? {
+										total: 0,
+										sameSubjectTotal: 0,
+										differentSubjectTotal: 0
+									}}
+									<td
+										class="col-total"
+										title="같은 과목 교사 {ct.sameSubjectTotal}건 + 다른 과목 교사 {ct.differentSubjectTotal}건"
+									>
+										{ct.total}
+										<span class="row-total-breakdown"
+											>({ct.sameSubjectTotal}+{ct.differentSubjectTotal})</span
+										>
+									</td>
 								{/each}
 								<td class="grand-total">{summary.total}</td>
 							</tr>
@@ -892,6 +964,23 @@
 		font-weight: 800;
 		color: var(--header-bg);
 		border-left: 2px solid #cbd5e1; /* 섹션 구분 라인 (0.8pt 느낌) */
+		min-width: 70px;
+		line-height: 1.15;
+	}
+	.row-total-breakdown {
+		display: block;
+		font-size: 0.7rem;
+		font-weight: 600;
+		color: #64748b;
+		margin-top: 0.1rem;
+		white-space: nowrap;
+	}
+	.section-subtitle {
+		display: inline-block;
+		margin-left: 0.6rem;
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: #64748b;
 	}
 	.footer-row td,
 	.footer-row th {
@@ -899,6 +988,9 @@
 		font-weight: 800;
 		color: var(--header-bg);
 		border-top: 2px solid #cbd5e1; /* 섹션 구분 라인 */
+	}
+	.footer-row .col-total {
+		line-height: 1.15;
 	}
 	.grand-total {
 		background: var(--header-bg) !important;
