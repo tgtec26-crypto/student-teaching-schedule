@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { user, db, isAdmin, type UserRole } from '$lib/firebase';
+	import { isAllowedDomain, ALLOWED_DOMAINS_DISPLAY } from '$lib/authConfig';
 	import {
 		collection,
 		getDocs,
@@ -139,17 +140,24 @@
 		}
 
 		// Split by newline or comma, trim, and filter valid emails
-		const emails = bulkEmailsInput
+		const parsed = bulkEmailsInput
 			.split(/[\n,]/)
 			.map((e) => e.trim().toLowerCase())
 			.filter((e) => e.length > 0 && e.includes('@'));
 
+		const emails = parsed.filter((e) => isAllowedDomain(e));
+		const rejected = parsed.filter((e) => !isAllowedDomain(e));
+
 		if (emails.length === 0) {
-			alert('유효한 이메일 형식이 없습니다.');
+			alert(`허용된 도메인의 이메일이 없습니다.\n허용 도메인: ${ALLOWED_DOMAINS_DISPLAY}`);
 			return;
 		}
 
-		if (!confirm(`총 ${emails.length}명의 사용자를 ${newUserRole} 권한으로 등록하시겠습니까?`)) {
+		const confirmMsg = rejected.length > 0
+			? `다음 ${rejected.length}개 이메일은 허용되지 않은 도메인이라 제외됩니다:\n${rejected.join('\n')}\n\n허용된 ${emails.length}명을 ${newUserRole} 권한으로 등록할까요?`
+			: `총 ${emails.length}명의 사용자를 ${newUserRole} 권한으로 등록하시겠습니까?`;
+
+		if (!confirm(confirmMsg)) {
 			return;
 		}
 

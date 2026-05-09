@@ -4,6 +4,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 import { teacherMetadata, getStandardizedName } from './teacherData';
+import { isAllowedDomain, ALLOWED_DOMAINS_DISPLAY } from './authConfig';
 
 const firebaseConfig = {
 // ... (omitted config for brevity in this thought, will provide full replacement)
@@ -50,6 +51,14 @@ function setRoleCookie(role: UserRole) {
 // User Sync & Role Management
 async function syncUser(u: any): Promise<UserRole> {
 	if (!u || !u.email) return null;
+
+	if (!isAllowedDomain(u.email)) {
+		await signOut(auth);
+		if (browser) {
+			alert(`허용되지 않은 도메인입니다.\n${ALLOWED_DOMAINS_DISPLAY} 계정으로만 로그인할 수 있습니다.`);
+		}
+		return null;
+	}
 
 	const userRef = doc(db, 'users', u.email);
 	const docSnap = await getDoc(userRef);
