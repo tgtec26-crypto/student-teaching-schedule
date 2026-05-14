@@ -2393,6 +2393,7 @@ export const timetableData: any = {
 // 강율이 ↔ 김보미 교환 (1-3): 5/11(월) 3교시(강율이 기가) ↔ 5/12(화) 6교시(김보미 한문).
 // 송윤호 → 이의진 대체 (3-1, 단방향): 5/28(목) 3교시 송윤호 수학B → 이의진 영어B. (5/26 교환 부분은 취소되어 원본 유지)
 // 김유진 → 5/28(목) 3-2반 2교시 (송윤호 수학B → 김유진 국어A). 6/1 송윤호 수업은 실습 기간 외라 미반영.
+// 5/21(목) 교시 교환 3건: 1-4 1교시↔3교시(강율이 기가 ↔ 엄인우 체육), 2-2 1교시↔2교시(이성운 체육A ↔ 이지애 국어A), 2-6 1교시↔3교시(이지애 국어A ↔ 주예진 지구).
 export const scheduleOverrides: Record<
 	string,
 	Record<string, Record<string, { teacher: string; subject: string }>>
@@ -2405,6 +2406,10 @@ export const scheduleOverrides: Record<
 		'2026-05-07': {
 			'1': { teacher: '이윤경', subject: '음악' },
 			'5': { teacher: '강율이', subject: '기가' }
+		},
+		'2026-05-21': {
+			'1': { teacher: '엄인우', subject: '체육' },
+			'3': { teacher: '강율이', subject: '기가' }
 		}
 	},
 	'103': {
@@ -2419,6 +2424,10 @@ export const scheduleOverrides: Record<
 		'2026-05-28': { '3': { teacher: '전태상', subject: '음악B' } }
 	},
 	'202': {
+		'2026-05-21': {
+			'1': { teacher: '이지애', subject: '국어A' },
+			'2': { teacher: '이성운', subject: '체육A' }
+		},
 		'2026-05-28': { '6': { teacher: '전태상', subject: '음악B' } }
 	},
 	'204': {
@@ -2430,6 +2439,10 @@ export const scheduleOverrides: Record<
 		'2026-05-29': { '2': { teacher: '전태상', subject: '음악A' } }
 	},
 	'206': {
+		'2026-05-21': {
+			'1': { teacher: '주예진', subject: '지구' },
+			'3': { teacher: '이지애', subject: '국어A' }
+		},
 		'2026-05-28': { '4': { teacher: '전태상', subject: '음악B' } }
 	},
 	'301': {
