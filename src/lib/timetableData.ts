@@ -2394,6 +2394,7 @@ export const timetableData: any = {
 // 송윤호 → 이의진 대체 (3-1, 단방향): 5/28(목) 3교시 송윤호 수학B → 이의진 영어B. (5/26 교환 부분은 취소되어 원본 유지)
 // 김유진 → 5/28(목) 3-2반 2교시 (송윤호 수학B → 김유진 국어A). 6/1 송윤호 수업은 실습 기간 외라 미반영.
 // 5/21(목) 교시 교환 3건: 1-4 1교시↔3교시(강율이 기가 ↔ 엄인우 체육), 2-2 1교시↔2교시(이성운 체육A ↔ 이지애 국어A), 2-6 1교시↔3교시(이지애 국어A ↔ 주예진 지구).
+// 5/19(화) 1-3 교시 교환: 2교시(강율이 기가) ↔ 7교시(이현진 국어A).
 export const scheduleOverrides: Record<
 	string,
 	Record<string, Record<string, { teacher: string; subject: string }>>
@@ -2414,7 +2415,11 @@ export const scheduleOverrides: Record<
 	},
 	'103': {
 		'2026-05-11': { '3': { teacher: '김보미', subject: '한문' } },
-		'2026-05-12': { '6': { teacher: '강율이', subject: '기가' } }
+		'2026-05-12': { '6': { teacher: '강율이', subject: '기가' } },
+		'2026-05-19': {
+			'2': { teacher: '이현진', subject: '국어A' },
+			'7': { teacher: '강율이', subject: '기가' }
+		}
 	},
 	'203': {
 		'2026-05-13': { '6': { teacher: '이의진', subject: '영어B' } },
