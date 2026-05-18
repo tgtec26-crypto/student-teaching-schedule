@@ -2395,13 +2395,30 @@ export const timetableData: any = {
 // 김유진 → 5/28(목) 3-2반 2교시 (송윤호 수학B → 김유진 국어A). 6/1 송윤호 수업은 실습 기간 외라 미반영.
 // 5/21(목) 교시 교환 3건: 1-4 1교시↔3교시(강율이 기가 ↔ 엄인우 체육), 2-2 1교시↔2교시(이성운 체육A ↔ 이지애 국어A), 2-6 1교시↔3교시(이지애 국어A ↔ 주예진 지구).
 // 5/19(화) 1-3 교시 교환: 2교시(강율이 기가) ↔ 7교시(이현진 국어A).
+// 5/20(수) 교시 교환 3건: 2-6 1교시↔3교시(김일홍 수학 ↔ 이윤경 음악A), 2-1 2교시↔3교시(김지영 수학 ↔ 이지애 국어A), 1-1 2교시↔4교시(강율이 기가 ↔ 이정무 수학).
+// 5/26(화) 교시 교환 5건: 1-1 3교시↔6교시(김옥배 도덕 ↔ 엄인우 체육), 2-3 2교시↔4교시(김지영 수학 ↔ 정안나 국어B), 2-4 2교시↔3교시(이성운 체육A ↔ 이지애 국어A), 1-2 1교시↔2교시(이현진 국어A ↔ 박혜리 영어), 3-1 5교시↔6교시(이재국 기가 ↔ 유수형 화학).
+// 5/26(화) 단방향 변경 3건: 3-6 2교시 전태상 음악 → 이재국 기가, 3-4 3교시 전태상 음악 → 이재국 기가, 3-3 3교시 이재국 기가 → 이윤경 음악.
 export const scheduleOverrides: Record<
 	string,
 	Record<string, Record<string, { teacher: string; subject: string }>>
 > = {
+	'101': {
+		'2026-05-20': {
+			'2': { teacher: '이정무', subject: '수학' },
+			'4': { teacher: '강율이', subject: '기가' }
+		},
+		'2026-05-26': {
+			'3': { teacher: '엄인우', subject: '체육' },
+			'6': { teacher: '김옥배', subject: '도덕' }
+		}
+	},
 	'102': {
 		'2026-05-04': { '6': { teacher: '이윤경', subject: '음악' } },
-		'2026-05-07': { '6': { teacher: '강율이', subject: '기가' } }
+		'2026-05-07': { '6': { teacher: '강율이', subject: '기가' } },
+		'2026-05-26': {
+			'1': { teacher: '박혜리', subject: '영어' },
+			'2': { teacher: '이현진', subject: '국어A' }
+		}
 	},
 	'104': {
 		'2026-05-07': {
@@ -2423,9 +2440,17 @@ export const scheduleOverrides: Record<
 	},
 	'203': {
 		'2026-05-13': { '6': { teacher: '이의진', subject: '영어B' } },
-		'2026-05-20': { '6': { teacher: '이의진', subject: '영어B' } }
+		'2026-05-20': { '6': { teacher: '이의진', subject: '영어B' } },
+		'2026-05-26': {
+			'2': { teacher: '정안나', subject: '국어B' },
+			'4': { teacher: '김지영', subject: '수학' }
+		}
 	},
 	'201': {
+		'2026-05-20': {
+			'2': { teacher: '이지애', subject: '국어A' },
+			'3': { teacher: '김지영', subject: '수학' }
+		},
 		'2026-05-28': { '3': { teacher: '전태상', subject: '음악B' } }
 	},
 	'202': {
@@ -2438,12 +2463,20 @@ export const scheduleOverrides: Record<
 	'204': {
 		'2026-05-12': { '7': { teacher: '이의진', subject: '영어B' } },
 		'2026-05-19': { '7': { teacher: '이의진', subject: '영어B' } },
+		'2026-05-26': {
+			'2': { teacher: '이지애', subject: '국어A' },
+			'3': { teacher: '이성운', subject: '체육A' }
+		},
 		'2026-05-08': { '2': { teacher: '전태상', subject: '음악A' } },
 		'2026-05-15': { '2': { teacher: '전태상', subject: '음악A' } },
 		'2026-05-22': { '2': { teacher: '전태상', subject: '음악A' } },
 		'2026-05-29': { '2': { teacher: '전태상', subject: '음악A' } }
 	},
 	'206': {
+		'2026-05-20': {
+			'1': { teacher: '이윤경', subject: '음악A' },
+			'3': { teacher: '김일홍', subject: '수학' }
+		},
 		'2026-05-21': {
 			'1': { teacher: '주예진', subject: '지구' },
 			'3': { teacher: '이지애', subject: '국어A' }
@@ -2455,6 +2488,10 @@ export const scheduleOverrides: Record<
 		'2026-05-06': { '3': { teacher: '최인영', subject: '국어B' } },
 		'2026-05-12': { '3': { teacher: '정자연', subject: '영어A' } },
 		'2026-05-19': { '3': { teacher: '정자연', subject: '영어A' } },
+		'2026-05-26': {
+			'5': { teacher: '유수형', subject: '화학' },
+			'6': { teacher: '이재국', subject: '기가' }
+		},
 		'2026-05-28': { '3': { teacher: '이의진', subject: '영어B' } }
 	},
 	'302': {
@@ -2472,13 +2509,15 @@ export const scheduleOverrides: Record<
 		'2026-05-11': { '3': { teacher: '이의진', subject: '영어B' } },
 		'2026-05-13': { '6': { teacher: '정자연', subject: '영어A' } },
 		'2026-05-18': { '3': { teacher: '이의진', subject: '영어B' } },
-		'2026-05-20': { '6': { teacher: '정자연', subject: '영어A' } }
+		'2026-05-20': { '6': { teacher: '정자연', subject: '영어A' } },
+		'2026-05-26': { '3': { teacher: '이윤경', subject: '음악' } }
 	},
 	'304': {
 		'2026-05-11': { '3': { teacher: '정자연', subject: '영어A' } },
 		'2026-05-14': { '4': { teacher: '이의진', subject: '영어B' } },
 		'2026-05-18': { '3': { teacher: '정자연', subject: '영어A' } },
-		'2026-05-21': { '4': { teacher: '이의진', subject: '영어B' } }
+		'2026-05-21': { '4': { teacher: '이의진', subject: '영어B' } },
+		'2026-05-26': { '3': { teacher: '이재국', subject: '기가' } }
 	},
 	'305': {
 		'2026-05-12': { '5': { teacher: '정자연', subject: '영어A' } },
@@ -2488,7 +2527,8 @@ export const scheduleOverrides: Record<
 		'2026-05-11': { '5': { teacher: '이의진', subject: '영어B' } },
 		'2026-05-12': { '1': { teacher: '정자연', subject: '영어A' } },
 		'2026-05-18': { '5': { teacher: '이의진', subject: '영어B' } },
-		'2026-05-19': { '1': { teacher: '정자연', subject: '영어A' } }
+		'2026-05-19': { '1': { teacher: '정자연', subject: '영어A' } },
+		'2026-05-26': { '2': { teacher: '이재국', subject: '기가' } }
 	}
 };
 
