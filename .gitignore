@@ -25,3 +25,7 @@ vite.config.ts.timestamp-*
 test-results
 # SQLite
 *.db
+
+# Claude Code (local)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
