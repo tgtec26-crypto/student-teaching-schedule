@@ -1,0 +1,41 @@
+name: 컴시간 시간표 동기화
+
+on:
+  schedule:
+    # UTC 08:00 = KST 17:00, 평일만
+    - cron: '0 8 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '쓰기 없이 diff 만 확인'
+        type: boolean
+        default: false
+
+concurrency:
+  group: sync-comcigan
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # prepare 훅이 Playwright 브라우저를 받으므로 건너뛴다. 동기화에는 쓰이지 않는다.
+      - run: npm ci --ignore-scripts
+
+      - name: 동기화 실행
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          ADMIN_CHAT_WEBHOOK: ${{ secrets.ADMIN_CHAT_WEBHOOK }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            npm run sync:comcigan:dry
+          else
+            npm run sync:comcigan
+          fi

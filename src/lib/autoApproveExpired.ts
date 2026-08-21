@@ -1,9 +1,8 @@
 import { db } from './firebase';
 import { doc, runTransaction } from 'firebase/firestore';
 import { teacherWebhooks } from './teacherWebhooks';
+import { GAS_NOTIFY_URL } from './notifyConfig';
 
-const GAS_NOTIFY_URL =
-	'https://script.google.com/macros/s/AKfycby2kNaGAvgtD36spyTvTlsxwWpFKow5QjiPrIuhJJDUZuLaBxr8iagIzTYhhCnUHORg/exec';
 const AUTO_APPROVE_AFTER_MS = 24 * 60 * 60 * 1000;
 
 const processingIds = new Set<string>();

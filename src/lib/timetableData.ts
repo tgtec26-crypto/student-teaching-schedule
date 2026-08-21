@@ -2541,7 +2541,32 @@ export const scheduleOverrides: Record<
 	}
 };
 
+export type LiveOverride =
+	| { teacher: string; subject: string }
+	| { cancelled: true };
+
+type LiveOverrideResolver = (
+	classId: string,
+	dateStr: string,
+	period: string
+) => LiveOverride | undefined;
+
+let resolveLiveOverride: LiveOverrideResolver | null = null;
+
+/**
+ * 컴시간 동기화가 Firestore 에 넣은 변동분을 조회할 함수를 등록한다.
+ * `overridesStore.svelte.ts` 가 호출한다.
+ *
+ * 이 파일이 Firestore 를 직접 import 하지 않도록 주입 방식을 쓴다. 동기화
+ * 스크립트가 Node 에서 이 모듈을 그대로 불러 쓸 수 있어야 하기 때문이다.
+ */
+export function setLiveOverrideResolver(resolver: LiveOverrideResolver) {
+	resolveLiveOverride = resolver;
+}
+
 export function getSlot(classId: string, dateStr: string, period: string) {
+	const live = resolveLiveOverride?.(classId, dateStr, period);
+	if (live) return 'cancelled' in live ? undefined : live;
 	const override = scheduleOverrides[classId]?.[dateStr]?.[period];
 	if (override) return override;
 	const day = new Date(dateStr).getDay();

@@ -3,7 +3,19 @@
 	import { page } from '$app/state';
 	import { user, login, logout, isAdmin, isSupervisor } from '$lib/firebase';
 	import { supervisorResetSignal } from '$lib/supervisorNav';
-	import { LogIn, LogOut, User as UserIcon, ArrowLeft, ShieldCheck, UserCheck, Bell, HelpCircle, Replace } from 'lucide-svelte';
+	import { loadLiveOverrides } from '$lib/overridesStore.svelte';
+	import { INTERNSHIP_START, INTERNSHIP_END } from '$lib/comcigan/config';
+	import {
+		LogIn,
+		LogOut,
+		User as UserIcon,
+		ArrowLeft,
+		ShieldCheck,
+		UserCheck,
+		Bell,
+		HelpCircle,
+		Replace
+	} from 'lucide-svelte';
 
 	// /supervisor에 이미 있는 상태에서 '지도교사' 버튼을 누르면 목록 뷰로 복귀
 	function handleSupervisorClick() {
@@ -13,6 +25,18 @@
 	}
 
 	let { children } = $props();
+
+	// 컴시간 동기화가 기록한 시간표 변동분.
+	// Firestore 읽기에 인증이 필요하므로 로그인 후 한 번만 불러온다.
+	// 실패해도 정적 시간표로 그대로 동작한다.
+	let overridesRequested = false;
+	$effect(() => {
+		if (!$user || overridesRequested) return;
+		overridesRequested = true;
+		loadLiveOverrides(INTERNSHIP_START, INTERNSHIP_END).catch((err) =>
+			console.error('시간표 변동분을 불러오지 못했습니다', err)
+		);
+	});
 
 	// observation/[date] 페이지인 경우 날짜 정보를 가져옴
 	const dateParam = $derived(page.params.date);
@@ -148,9 +172,17 @@
 		transform: translateY(-1px);
 	}
 
-	.top-btn.admin { border-color: #94a3b8; }
-	.top-btn.supervisor { border-color: #f59e0b; color: #fbbf24; }
-	.top-btn.changes { border-color: #38bdf8; color: #7dd3fc; }
+	.top-btn.admin {
+		border-color: #94a3b8;
+	}
+	.top-btn.supervisor {
+		border-color: #f59e0b;
+		color: #fbbf24;
+	}
+	.top-btn.changes {
+		border-color: #38bdf8;
+		color: #7dd3fc;
+	}
 
 	.header-content-main {
 		display: flex;
@@ -298,7 +330,8 @@
 	@media (max-width: 1000px) {
 		/* iOS 노치/다이나믹 아일랜드 safe-area 대응 */
 		.header-container {
-			padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.5rem max(1rem, env(safe-area-inset-left));
+			padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.5rem
+				max(1rem, env(safe-area-inset-left));
 		}
 		.header-inner {
 			flex-direction: row;
@@ -308,50 +341,127 @@
 			gap: 0.6rem;
 			min-height: auto;
 		}
-		.header-logo { order: 1; width: 40px; height: 40px; flex-shrink: 0; }
+		.header-logo {
+			order: 1;
+			width: 40px;
+			height: 40px;
+			flex-shrink: 0;
+		}
 		.header-content-main {
-			order: 2; flex: 1; align-items: flex-start;
-			text-align: left; gap: 0; min-width: 0;
+			order: 2;
+			flex: 1;
+			align-items: flex-start;
+			text-align: left;
+			gap: 0;
+			min-width: 0;
 		}
 		.header-title {
-			font-size: 1.15rem; letter-spacing: 0;
-			white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+			font-size: 1.15rem;
+			letter-spacing: 0;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
 		}
-		.header-desc { display: none; }
-		.top-left-actions { position: static; order: 3; gap: 0.3rem; flex-shrink: 0; }
-		.top-btn { padding: 0.25rem 0.55rem; font-size: 0.75rem; }
-		.auth-box { position: static; order: 4; flex-shrink: 0; }
-		.user-info { padding: 0.3rem 0.65rem; gap: 0.4rem; font-size: 0.8rem; }
-		.user-name { white-space: nowrap; }
+		.header-desc {
+			display: none;
+		}
+		.top-left-actions {
+			position: static;
+			order: 3;
+			gap: 0.3rem;
+			flex-shrink: 0;
+		}
+		.top-btn {
+			padding: 0.25rem 0.55rem;
+			font-size: 0.75rem;
+		}
+		.auth-box {
+			position: static;
+			order: 4;
+			flex-shrink: 0;
+		}
+		.user-info {
+			padding: 0.3rem 0.65rem;
+			gap: 0.4rem;
+			font-size: 0.8rem;
+		}
+		.user-name {
+			white-space: nowrap;
+		}
 	}
 
 	/* ─── 다크 모드 ─── */
 	@media (prefers-color-scheme: dark) {
-		.header-container { border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
-		.btn-login { background-color: var(--accent-green); color: #0d1128; font-weight: 900; }
-		.user-info { background: rgba(255, 255, 255, 0.08); }
-		.top-btn { border-color: rgba(255, 255, 255, 0.22); }
-		.top-btn.supervisor { color: #fbbf24; border-color: #fbbf24; }
-		.top-btn.changes { color: #7dd3fc; border-color: #7dd3fc; }
+		.header-container {
+			border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+		}
+		.btn-login {
+			background-color: var(--accent-green);
+			color: #0d1128;
+			font-weight: 900;
+		}
+		.user-info {
+			background: rgba(255, 255, 255, 0.08);
+		}
+		.top-btn {
+			border-color: rgba(255, 255, 255, 0.22);
+		}
+		.top-btn.supervisor {
+			color: #fbbf24;
+			border-color: #fbbf24;
+		}
+		.top-btn.changes {
+			color: #7dd3fc;
+			border-color: #7dd3fc;
+		}
 	}
 
 	/* ─── ≤600px: 소형 모바일 세로 모드 추가 압축 ─── */
 	@media (max-width: 600px) {
-		.header-container { padding: 0.4rem 0.65rem; }
-		.header-inner { gap: 0.35rem; }
-		.header-logo { width: 28px; height: 28px; }
-		.header-title { font-size: 0.85rem; }
-		.top-btn { padding: 0.15rem 0.35rem; font-size: 0.62rem; gap: 0.1rem; }
-		.user-info { padding: 0.22rem 0.4rem; gap: 0.2rem; font-size: 0.7rem; }
-		.user-name { max-width: 46px; }
-		.btn-label { display: none; }
-		.btn-settings { padding: 0.1rem; }
-		.btn-login { padding: 0.38rem 0.65rem; font-size: 0.78rem; }
+		.header-container {
+			padding: 0.4rem 0.65rem;
+		}
+		.header-inner {
+			gap: 0.35rem;
+		}
+		.header-logo {
+			width: 28px;
+			height: 28px;
+		}
+		.header-title {
+			font-size: 0.85rem;
+		}
+		.top-btn {
+			padding: 0.15rem 0.35rem;
+			font-size: 0.62rem;
+			gap: 0.1rem;
+		}
+		.user-info {
+			padding: 0.22rem 0.4rem;
+			gap: 0.2rem;
+			font-size: 0.7rem;
+		}
+		.user-name {
+			max-width: 46px;
+		}
+		.btn-label {
+			display: none;
+		}
+		.btn-settings {
+			padding: 0.1rem;
+		}
+		.btn-login {
+			padding: 0.38rem 0.65rem;
+			font-size: 0.78rem;
+		}
 	}
 
 	/* ─── ≤500px: 초소형 (iPhone SE 포함) - 역할 버튼 두 번째 줄로 ─── */
 	@media (max-width: 500px) {
-		.header-inner { flex-wrap: wrap; row-gap: 0.3rem; }
+		.header-inner {
+			flex-wrap: wrap;
+			row-gap: 0.3rem;
+		}
 		.top-left-actions {
 			order: 5;
 			flex-basis: 100%;
